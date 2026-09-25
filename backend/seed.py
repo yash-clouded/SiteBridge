@@ -7,22 +7,52 @@ from __future__ import annotations
 from pathlib import Path
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, init_db
-from app.models import Project, WbsNode
+from app.models import Project, User, WbsNode
+from app.security import hash_password
 from app.services.importer import import_schedule
 
 SAMPLE_CSV = Path(__file__).resolve().parent.parent / "demo" / "schedule_sample.csv"
 PROJECT_CODE = "NPU"
+
+# Phase 2 demo users — one per role (roles grant functions, never WBS levels)
+SEED_PASSWORD = "demo1234"
+SEED_USERS = [
+    ("field@sitebridge.dev", "Dana Fielder", "FIELD"),      # Field User (Supervisor/Contractor)
+    ("planner@sitebridge.dev", "Elena Voss", "PLANNER"),    # Planner / Project Controls
+    ("pm@sitebridge.dev", "Raj Mehta", "PM"),               # Project Manager / Management
+]
+
+
+def ensure_users(db: Session) -> None:
+    for email, name, role in SEED_USERS:
+        if db.scalar(select(User).where(User.email == email)) is None:
+            db.add(
+                User(
+                    email=email,
+                    full_name=name,
+                    password_hash=hash_password(SEED_PASSWORD),
+                    role=role,
+                )
+            )
+    db.commit()
 
 
 def main() -> None:
     init_db()
     db = SessionLocal()
     try:
+        ensure_users(db)
+        print("Users (password: %s):" % SEED_PASSWORD)
+        for email, name, role in SEED_USERS:
+            print(f"  {email:28s} {name:16s} {role}")
+
         if db.scalar(select(Project).where(Project.code == PROJECT_CODE)) is not None:
             print(f"Project {PROJECT_CODE} already imported — skipping.")
             return
+
         project = import_schedule(
             db=db,
             content=SAMPLE_CSV.read_bytes(),

@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     # CORS for the Next.js dev server
     frontend_origin: str = "http://localhost:3000"
 
+    # JWT auth (Phase 2) — role travels as a token claim
+    jwt_secret: str = "dev-only-change-me-replace-in-prod-0123456789"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 12
+
 
 @lru_cache
 def get_settings() -> Settings:

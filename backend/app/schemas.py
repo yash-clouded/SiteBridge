@@ -46,3 +46,25 @@ class WbsNodeOut(BaseModel):
 class ImportResponse(BaseModel):
     project: ProjectOut
     message: str
+
+
+# --- Auth (Phase 2) ---------------------------------------------------------
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    full_name: str
+    role: str  # Role.value: FIELD | PLANNER | PM
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut

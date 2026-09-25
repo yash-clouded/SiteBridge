@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiGet, apiPostForm, ApiError, type ImportResponse, type Project } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,7 +40,8 @@ export default function ProjectsPage() {
   return (
     <Shell title="Projects">
       <div className="mx-auto max-w-6xl space-y-5">
-        {/* Import panel — a tool, not a hero */}
+        {/* Import panel — planner-only function (roles gate functions, not tree levels) */}
+        {user?.role === "PLANNER" ? (
         <section className="rounded-md border border-line bg-panel">
           <div className="border-b border-line px-4 py-2.5 text-[13px] font-medium">
             Import schedule
@@ -92,6 +95,7 @@ export default function ProjectsPage() {
             ) : null}
           </form>
         </section>
+        ) : null}
 
         {/* Project list */}
         <section className="overflow-hidden rounded-md border border-line bg-panel">

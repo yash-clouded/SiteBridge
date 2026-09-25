@@ -1,4 +1,9 @@
-"""Project endpoints: list imported schedules, import a new one (Phase 1)."""
+"""Project endpoints: list imported schedules, import a new one.
+
+Browse requires any authenticated role ("any role can browse the
+hierarchy"); import is restricted to PLANNER — roles grant functions,
+never WBS-level access.
+"""
 from __future__ import annotations
 
 import logging
@@ -8,8 +13,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Project, WbsNode
+from ..models import Project, Role, WbsNode
 from ..schemas import ImportResponse, ProjectOut
+from ..security import get_current_user, require_roles
 from ..services.importer import ImportValidationError, import_schedule
 
 logger = logging.getLogger(__name__)
@@ -34,7 +40,10 @@ def _project_out(project: Project, db: Session) -> ProjectOut:
 
 
 @router.get("", response_model=list[ProjectOut])
-def list_projects(db: Session = Depends(get_db)) -> list[ProjectOut]:
+def list_projects(
+    db: Session = Depends(get_db),
+    _user=Depends(get_current_user),  # any authenticated role may browse
+) -> list[ProjectOut]:
     projects = db.scalars(select(Project).order_by(Project.imported_at.desc())).all()
     return [_project_out(p, db) for p in projects]
 
@@ -45,6 +54,7 @@ async def import_project(
     project_code: str = Form(...),
     project_name: str = Form(...),
     db: Session = Depends(get_db),
+    _user=Depends(require_roles(Role.PLANNER)),  # planners maintain the schedule snapshot
 ) -> ImportResponse:
     """Import a P6/MS Project-style CSV or Excel schedule export."""
     content = await file.read()

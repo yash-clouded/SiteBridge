@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ROLE_LABELS, useAuth } from "@/lib/auth";
 
 /**
  * Sidebar + top bar shell.
@@ -22,6 +23,7 @@ export function Shell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen">
@@ -79,8 +81,21 @@ export function Shell({
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-3 text-[12px] text-ink-3">
-            {/* Role/user slot — populated in Phase 2 */}
+          <div className="flex items-center gap-3 text-[12px]">
+            {user ? (
+              <>
+                <span className="text-ink-2">{user.full_name}</span>
+                <span className="rounded border border-line-2 bg-panel-2 px-1.5 py-0.5 text-[11px] text-ink-2">
+                  {ROLE_LABELS[user.role]}
+                </span>
+                <button
+                  onClick={logout}
+                  className="text-ink-3 transition-colors hover:text-ink"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : null}
           </div>
         </header>
 

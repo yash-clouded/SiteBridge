@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import Project, WbsNode
 from ..schemas import WbsNodeOut
+from ..security import get_current_user
 
 router = APIRouter(prefix="/api", tags=["wbs"])
 
@@ -32,7 +33,11 @@ def _tree_ordered(nodes: list[WbsNode]) -> list[WbsNode]:
 
 
 @router.get("/projects/{project_id}/wbs", response_model=list[WbsNodeOut])
-def get_wbs(project_id: int, db: Session = Depends(get_db)) -> list[WbsNodeOut]:
+def get_wbs(
+    project_id: int,
+    db: Session = Depends(get_db),
+    _user=Depends(get_current_user),  # any authenticated role may browse
+) -> list[WbsNodeOut]:
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found.")

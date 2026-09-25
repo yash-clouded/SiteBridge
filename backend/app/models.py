@@ -8,11 +8,14 @@ The number of levels and their names are READ FROM THE IMPORTED DATA
 (`projects.level_count`, `projects.level_names`) — nothing in this code
 assumes a fixed number of levels or hardcodes what any level means.
 
-(Role/permission model arrives in Phase 2 and is deliberately a separate
-hierarchy that never references WBS levels.)
+The role/permission hierarchy (`users.role` below) is deliberately a
+separate hierarchy that never references WBS levels: a Planner is a role
+that can review/approve matches anywhere in the tree — there is no such
+thing as an "L1 user".
 """
 from __future__ import annotations
 
+import enum
 from datetime import date, datetime
 from typing import Any, Optional
 
@@ -114,3 +117,31 @@ class WbsNode(Base):
         UniqueConstraint("project_id", "parent_id", "code", name="uq_wbs_project_parent_code"),
         Index("ix_wbs_nodes_project_level", "project_id", "level"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Hierarchy 2: role/permission model (SEPARATE from the WBS tree)
+#
+# A user's role determines which functions they can access — never which
+# WBS level they are "assigned to". Permissions are granted by function
+# (submit / review+approve / read-only rollup), never by tree position.
+# ---------------------------------------------------------------------------
+
+class Role(str, enum.Enum):
+    """Who can see/do what. Unrelated to WBS levels."""
+
+    FIELD = "FIELD"        # Field User (Supervisor/Contractor): submit + own history
+    PLANNER = "PLANNER"    # Planner/Project Controls: review + approve/correct/reject
+    PM = "PM"              # Project Manager/Management: read-only rollup, no approvals
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    full_name: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(32), index=True)  # Role.value
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

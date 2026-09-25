@@ -1,8 +1,29 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
+
 /**
- * Route group layout for authenticated app pages.
- * Phase 1 has no auth yet; Phase 2 adds the login/role gate here —
- * roles are a separate hierarchy from the WBS and never gate by level.
+ * Auth gate for the app area: unauthenticated visitors are sent to the
+ * plain login screen. Roles decide which *functions* render inside —
+ * never which WBS levels are visible (all roles browse the full tree).
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { user, ready } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (ready && !user) router.replace("/login");
+  }, [ready, user, router]);
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-[13px] text-ink-3">
+        Loading…
+      </div>
+    );
+  }
+  if (!user) return null; // redirecting to /login
   return <>{children}</>;
 }
