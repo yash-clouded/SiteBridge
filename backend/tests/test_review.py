@@ -311,22 +311,34 @@ def test_queue_lists_the_work_with_its_top_candidate(client, stub_llm, project_i
 
 
 def test_test_project_never_leaks_into_the_demo_data(client, stub_llm, project_id):
-    """Cleanup contract: approvals live on the TEST project only."""
+    """Cleanup contract: an approval touches only its own project's nodes.
+
+    Asserted as a before/after diff — the demo DB legitimately carries
+    actuals of its own, so scanning for "any actuals outside TEST" would
+    fail for reasons unrelated to what this test did.
+    """
     field = login(client, "field")["access_token"]
     planner = login(client, "planner")["access_token"]
     report, _ = ready_report(client, field, planner, project_id, stub_llm)
+
+    def actuals_by_id() -> dict[int, int | None]:
+        db = SessionLocal()
+        try:
+            return {n.id: n.actual_report_id for n in db.scalars(select(WbsNode)).all()}
+        finally:
+            db.close()
+
+    before = actuals_by_id()
     review(client, planner, report["id"], "approve", {})
+    after = actuals_by_id()
+
+    changed = [i for i in after if after[i] != before.get(i)]
+    assert changed, "the approved activity should carry actuals"
 
     db = SessionLocal()
     try:
-        marked = db.scalars(select(WbsNode).where(WbsNode.actual_report_id.is_not(None))).all()
-        demo = db.scalars(
-            select(WbsNode).where(
-                WbsNode.actual_report_id.is_not(None),
-                WbsNode.project_id != project_id,
-            )
-        ).all()
+        touched = db.scalars(select(WbsNode).where(WbsNode.id.in_(changed))).all()
     finally:
         db.close()
-    assert marked, "the approved activity should carry actuals"
-    assert not demo, "actuals must never be written onto the demo project"
+    outside = [n.code for n in touched if n.project_id != project_id]
+    assert not outside, f"actuals must never be written onto the demo project: {outside}"
