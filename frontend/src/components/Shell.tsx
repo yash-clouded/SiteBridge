@@ -10,8 +10,8 @@ import { ROLE_LABELS, useAuth } from "@/lib/auth";
  *
  * Nav items are functions of the user's ROLE (who can see/do what) —
  * never of WBS levels. All roles keep access to the WBS browse view.
- * Items are added as their phases land: Planner queue (Phase 8),
- * PM rollup dashboard (Phase 10).
+ * Items are added as their phases land: the planner review queue (Phase 8)
+ * is in; the PM rollup dashboard (Phase 10) is next.
  */
 interface NavItem {
   href: string;
@@ -31,6 +31,12 @@ const NAV: NavItem[] = [
     label: "Submit update",
     roles: ["FIELD"],
     active: (p) => p === "/submit",
+  },
+  {
+    href: "/queue",
+    label: "Review queue",
+    roles: ["PLANNER", "PM"],
+    active: (p) => p.startsWith("/queue"),
   },
 ];
 

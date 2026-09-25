@@ -31,6 +31,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -108,6 +109,18 @@ class WbsNode(Base):
     # Activity IDs exactly as imported; normalized link tables come with Phase 5.
     predecessor_ids: Mapped[list[Any]] = mapped_column(JSONB, default=list)
     successor_ids: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+
+    # Phase 8: actuals written by an approval — and only what the approved
+    # report actually states. A single reported date is stored as such;
+    # nothing here is ever back-filled from the plan (planned_* stays the
+    # baseline, actual_* is the evidence).
+    actual_status: Mapped[Optional[str]] = mapped_column(String(128))
+    actual_progress: Mapped[Optional[float]] = mapped_column(Float)  # percent as stated
+    actual_date: Mapped[Optional[date]] = mapped_column(Date)
+    actual_report_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("field_reports.id", ondelete="SET NULL"), index=True
+    )
+    actual_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     project: Mapped[Project] = relationship(back_populates="nodes")
     parent: Mapped[Optional["WbsNode"]] = relationship(
@@ -241,6 +254,10 @@ class ExecutionEvent(Base):
     # Phase 8: review lifecycle (PENDING | NEEDS_MANUAL | APPROVED | REJECTED).
     review_status: Mapped[str] = mapped_column(String(24), default="PENDING", index=True)
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    review_note: Mapped[Optional[str]] = mapped_column(Text)
 
     report: Mapped[FieldReport] = relationship(back_populates="event")
     candidates: Mapped[list["MatchCandidate"]] = relationship(
@@ -322,8 +339,15 @@ class MatchCandidate(Base):
     semantic_score: Mapped[float] = mapped_column(Float)
     # 0..1 knowledge-graph context bonus (area / discipline / tag / links).
     kg_score: Mapped[float] = mapped_column(Float)
+    # Phase 5 score first, then Phase 7 overwrites it with the final
+    # confidence (the retrieval-stage value stays visible in `breakdown`).
     score: Mapped[float] = mapped_column(Float)
     breakdown: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    # Phase 8: the ONE candidate an approval chose (unique per event below).
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     event: Mapped[ExecutionEvent] = relationship(back_populates="candidates")
@@ -331,6 +355,14 @@ class MatchCandidate(Base):
 
     __table_args__ = (
         UniqueConstraint("execution_event_id", "wbs_node_id", name="uq_candidate_event_node"),
+        # At most one approved candidate per event — an approval is a single
+        # choice, never a multi-select.
+        Index(
+            "uq_match_candidate_approved",
+            "execution_event_id",
+            unique=True,
+            postgresql_where=text("approved_at IS NOT NULL"),
+        ),
     )
 
 
@@ -345,6 +377,19 @@ class RuleResult(str, enum.Enum):
     PASS = "pass"
     FAIL = "fail"
     UNKNOWN = "unknown"
+
+
+class ReviewStatus(str, enum.Enum):
+    """Phase 8 lifecycle of a report's execution event.
+
+    NEEDS_MANUAL is set by Phase 7 when nothing scored high enough to
+    suggest; it means "a human must map this", not "rejected".
+    """
+
+    PENDING = "PENDING"
+    NEEDS_MANUAL = "NEEDS_MANUAL"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
 
 
 class RuleCheck(Base):

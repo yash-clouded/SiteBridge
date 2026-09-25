@@ -147,5 +147,193 @@ export interface ReportOut {
   raw_text: string;
   filename: string | null;
   pointer: Record<string, unknown>; // evidence pointer (page/row/timestamp)
+  extraction_status: string; // pending | extracted | failed | disabled
+  extraction_error: string | null;
   created_at: string;
+}
+
+/* ---- Phases 4-7: events, candidates, confidence ---- */
+
+export type ReviewStatus = "PENDING" | "NEEDS_MANUAL" | "APPROVED" | "REJECTED";
+export type ConfidenceBand = "high" | "medium" | "low";
+export type RuleResultValue = "pass" | "fail" | "unknown";
+
+export interface ExecutionEvent {
+  id: number;
+  project_id: number;
+  field_report_id: number;
+  description: string | null;
+  discipline: string | null;
+  location: string | null;
+  tag: string | null;
+  event_date: string | null;
+  status: string | null;
+  quantity: number | null;
+  progress: number | null;
+  model: string | null;
+  prompt_version: string;
+  review_status: ReviewStatus;
+  reviewed_at: string | null;
+  reviewed_by: number | null;
+  review_note: string | null;
+  extracted_at: string;
+  raw_model_response: string | null;
+}
+
+export interface ActivitySummary {
+  id: number;
+  code: string;
+  name: string;
+  level: number;
+  level_name: string;
+  discipline: string | null;
+  area: string | null;
+  equipment_tag: string | null;
+  planned_start: string | null;
+  planned_finish: string | null;
+  // Phase 8: written by an approval; null = not reported / not approved
+  actual_status: string | null;
+  actual_progress: number | null;
+  actual_date: string | null;
+  actual_report_id: number | null;
+}
+
+export interface RuleCheck {
+  rule: string;
+  result: RuleResultValue;
+  detail: string | null;
+  wbs_node_id: number;
+}
+
+export interface ConfidenceBreakdown {
+  final: number;
+  band: ConfidenceBand;
+  retrieval: number;
+  rules: {
+    score: number | null;
+    pass: number;
+    fail: number;
+    unknown: number;
+    decidable: number;
+    total: number;
+    weight: number;
+  };
+  formula: string;
+}
+
+export interface Candidate {
+  id: number;
+  rank: number;
+  wbs_node_id: number;
+  score: number;
+  semantic_score: number;
+  kg_score: number;
+  breakdown: Record<string, unknown> & { confidence?: ConfidenceBreakdown };
+  activity: ActivitySummary;
+  rules: RuleCheck[];
+  confidence_band: ConfidenceBand | null;
+  approved: boolean;
+}
+
+export interface MatchOut {
+  report: ReportOut;
+  extraction_status: string;
+  extraction_error: string | null;
+  event: ExecutionEvent | null;
+  candidates: Candidate[];
+}
+
+/* ---- Phase 8: review queue ---- */
+
+export interface QueueTop {
+  candidate_id: number;
+  wbs_node_id: number;
+  score: number;
+  confidence_band: ConfidenceBand | null;
+  activity: ActivitySummary;
+  rules: RuleCheck[];
+}
+
+export interface QueueItem {
+  report: ReportOut;
+  event: ExecutionEvent | null;
+  review_status: ReviewStatus | null;
+  top: QueueTop | null;
+  candidate_count: number;
+}
+
+export interface QueueOut {
+  project_id: number | null;
+  items: QueueItem[];
+  counts: Record<string, number>;
+}
+
+/* ---- Phase 9: roll-up ---- */
+
+export interface RollupBucket {
+  key: string;
+  activities: number;
+  reported: number;
+  avg_progress: number | null;
+  last_update: string | null;
+  by_status: Record<string, number>;
+}
+
+export interface RollupSeriesPoint {
+  day: string;
+  approved: number;
+}
+
+export interface RollupOut {
+  project_id: number;
+  activities: number;
+  reported: number;
+  coverage: number;
+  avg_progress: number | null;
+  pending_review: number;
+  needs_manual: number;
+  approved: number;
+  rejected: number;
+  by_area: RollupBucket[];
+  by_discipline: RollupBucket[];
+  by_wbs: RollupBucket[];
+  series: RollupSeriesPoint[];
+  updated_at: string | null;
+}
+
+/* ---- Phase 4-8 actions ---- */
+
+export function fetchQueue(params: { projectId?: number; filter?: string } = {}) {
+  const query = new URLSearchParams();
+  if (params.projectId != null) query.set("project_id", String(params.projectId));
+  if (params.filter) query.set("filter", params.filter);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiGet<QueueOut>(`/api/queue${suffix}`);
+}
+
+export function fetchMatch(reportId: number) {
+  return apiGet<MatchOut>(`/api/reports/${reportId}/match`);
+}
+
+export function approveReport(
+  reportId: number,
+  body: { candidate_id?: number; note?: string } = {},
+) {
+  return apiPostJson<MatchOut>(`/api/reports/${reportId}/approve`, body);
+}
+
+export function rejectReport(reportId: number, note?: string) {
+  return apiPostJson<MatchOut>(`/api/reports/${reportId}/reject`, { note });
+}
+
+export function reopenReport(reportId: number, note?: string) {
+  return apiPostJson<MatchOut>(`/api/reports/${reportId}/reopen`, { note });
+}
+
+export function processReport(reportId: number) {
+  return apiPostJson<MatchOut>(`/api/reports/${reportId}/process`, {});
+}
+
+export function fetchRollup(projectId: number) {
+  return apiGet<RollupOut>(`/api/projects/${projectId}/rollup`);
 }

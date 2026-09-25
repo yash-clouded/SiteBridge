@@ -117,6 +117,8 @@ class ExecutionEventOut(BaseModel):
     prompt_version: str
     review_status: str
     reviewed_at: Optional[datetime]
+    reviewed_by: Optional[int] = None
+    review_note: Optional[str] = None
     extracted_at: datetime
     raw_model_response: Optional[str] = None
 
@@ -134,6 +136,11 @@ class ActivitySummary(BaseModel):
     equipment_tag: Optional[str]
     planned_start: Optional[date]
     planned_finish: Optional[date]
+    # Phase 8: actuals written by an approval (null = not reported / not approved)
+    actual_status: Optional[str] = None
+    actual_progress: Optional[float] = None
+    actual_date: Optional[date] = None
+    actual_report_id: Optional[int] = None
 
 
 class RuleCheckOut(BaseModel):
@@ -155,6 +162,10 @@ class CandidateOut(BaseModel):
     breakdown: dict[str, Any]
     activity: ActivitySummary
     rules: list[RuleCheckOut] = []
+    # Phase 7: high | medium | low, read from breakdown["confidence"]
+    confidence_band: Optional[str] = None
+    # Phase 8: is this the candidate the approval chose?
+    approved: bool = False
 
 
 class MatchOut(BaseModel):
@@ -171,3 +182,72 @@ class EmbedResponse(BaseModel):
     provider: str
     model: str
     dim: int
+
+
+# --- Review queue (Phase 8) -------------------------------------------------
+
+class QueueTop(BaseModel):
+    candidate_id: int
+    wbs_node_id: int
+    score: float
+    confidence_band: Optional[str] = None
+    activity: ActivitySummary
+    rules: list[RuleCheckOut] = []
+
+
+class QueueItem(BaseModel):
+    report: ReportOut
+    event: Optional[ExecutionEventOut] = None
+    review_status: Optional[str] = None  # None = no event extracted yet
+    top: Optional[QueueTop] = None
+    candidate_count: int = 0
+
+
+class QueueOut(BaseModel):
+    project_id: Optional[int] = None
+    items: list[QueueItem] = []
+    counts: dict[str, int] = {}
+
+
+class ReviewNote(BaseModel):
+    note: Optional[str] = None
+
+
+class ApproveRequest(BaseModel):
+    """`candidate_id` omitted = the top-ranked candidate."""
+
+    candidate_id: Optional[int] = None
+    note: Optional[str] = None
+
+
+# --- Roll-up (Phase 9) ------------------------------------------------------
+
+class RollupBucket(BaseModel):
+    key: str  # area / discipline value; "" = not stated in the schedule
+    activities: int
+    reported: int  # activities with an approved actual
+    avg_progress: Optional[float] = None  # mean over REPORTED activities only
+    last_update: Optional[date] = None
+    by_status: dict[str, int] = {}
+
+
+class RollupSeriesPoint(BaseModel):
+    day: date
+    approved: int
+
+
+class RollupOut(BaseModel):
+    project_id: int
+    activities: int  # leaf activities in the schedule
+    reported: int  # ... that have approved evidence
+    coverage: float  # reported / activities
+    avg_progress: Optional[float] = None  # None = no activity states progress
+    pending_review: int = 0
+    needs_manual: int = 0
+    approved: int = 0
+    rejected: int = 0
+    by_area: list[RollupBucket] = []
+    by_discipline: list[RollupBucket] = []
+    by_wbs: list[RollupBucket] = []
+    series: list[RollupSeriesPoint] = []
+    updated_at: Optional[datetime] = None

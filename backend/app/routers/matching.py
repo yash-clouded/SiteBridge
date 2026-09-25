@@ -74,6 +74,8 @@ def build_match(db: Session, report: FieldReport) -> MatchOut:
             node = db.get(WbsNode, candidate.wbs_node_id)
             if node is None:
                 continue
+            breakdown = candidate.breakdown or {}
+            confidence = breakdown.get("confidence") or {}
             candidates.append(
                 CandidateOut(
                     id=candidate.id,
@@ -82,12 +84,14 @@ def build_match(db: Session, report: FieldReport) -> MatchOut:
                     score=candidate.score,
                     semantic_score=candidate.semantic_score,
                     kg_score=candidate.kg_score,
-                    breakdown=candidate.breakdown or {},
+                    breakdown=breakdown,
                     activity=ActivitySummary.model_validate(node),
                     rules=sorted(
                         rules_by_node.get(candidate.wbs_node_id, []),
                         key=lambda r: r.rule,
                     ),
+                    confidence_band=confidence.get("band"),
+                    approved=candidate.approved_at is not None,
                 )
             )
 

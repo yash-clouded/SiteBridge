@@ -55,6 +55,19 @@ class Settings(BaseSettings):
     # --- Phase 5/7: retrieval ------------------------------------------------
     retrieval_top_k: int = 5
 
+    # --- Phase 7: confidence -------------------------------------------------
+    # final = retrieval_weight * retrieval_score + rule_weight * rule_score
+    # `retrieval_score` is the Phase 5 cosine+KG score; `rule_score` is the
+    # share of DECIDABLE Phase 6 rules that passed (unknown is excluded, so
+    # missing data can neither help nor hurt). When no rule is decidable the
+    # weights renormalise onto retrieval alone.
+    confidence_retrieval_weight: float = 0.6
+    confidence_rule_weight: float = 0.4
+    # Bands drive the review queue: high/medium stay PENDING, low is flagged
+    # NEEDS_MANUAL for a human to map by hand.
+    confidence_high: float = 0.75
+    confidence_medium: float = 0.5
+
 
 @lru_cache
 def get_settings() -> Settings:

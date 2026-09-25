@@ -1,12 +1,13 @@
-"""Phases 4 -> 5 -> 6 as one pipeline over a single field report.
+"""Phases 4 -> 5 -> 6 -> 7 as one pipeline over a single field report.
 
     report  --(Phase 4: one LLM call)-->  execution event
             --(Phase 5: pgvector + KG)--> top-K match candidates
             --(Phase 6: pure code)----->  pass/fail/unknown rule checks
+            --(Phase 7: pure code)----->  final confidence + re-ranked list
 
 Nothing here invents data: extraction failures leave the report marked
 ``failed``/``disabled`` with no event, and retrieval/verification simply
-have nothing to say. Approval (Phase 7+) is a separate, explicit step —
+have nothing to say. Approval (Phase 8) is a separate, explicit step —
 this pipeline never writes to a schedule activity.
 """
 from __future__ import annotations
@@ -17,6 +18,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from ..models import ExecutionEvent, FieldReport, MatchCandidate, RuleCheck
+from .confidence import rank_and_score
 from .extraction import extract_event, get_event
 from .llm import LlmError, LlmNotConfigured
 from .retrieval import RetrievalError, retrieve
@@ -72,6 +74,7 @@ def process_report(
 
     candidates = retrieve(db, event, top_k=top_k)  # Phase 5
     checks = run_rules(db, event, candidates)  # Phase 6
+    rank_and_score(event, candidates, checks)  # Phase 7
     db.commit()
     db.refresh(event)
     return PipelineResult(report, event, candidates, checks)
