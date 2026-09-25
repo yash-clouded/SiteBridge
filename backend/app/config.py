@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # Vector width — must match the provider. Changing it requires recreating
     # the *_embeddings tables (docker compose down -v && uv run python seed.py).
     embedding_dim: int = 1536
+    # Send `input_type` with every embedding call: "passage" when indexing,
+    # "query" when embedding an event. Required by NVIDIA's E5/Nemotron
+    # embedding models (nvidia/nemotron-3-embed-1b); harmless to OpenAI's
+    # text-embedding-3-* (they ignore unknown fields), so leave it on for
+    # those providers too if you prefer one switch.
+    embedding_input_type: bool = False
 
     # --- Phase 5/7: retrieval ------------------------------------------------
     retrieval_top_k: int = 5

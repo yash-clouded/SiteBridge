@@ -57,10 +57,19 @@ def _api_key() -> str:
     return settings.embedding_api_key.strip() or settings.llm_api_key.strip()
 
 
-def _openai_embeddings(texts: list[str]) -> list[list[float]]:
+def input_type_for(role: str) -> str:
+    """`passage` when indexing documents, `query` when embedding a search input."""
+    return "query" if role == "query" else "passage"
+
+
+def _openai_embeddings(texts: list[str], role: str) -> list[list[float]]:
     payload: dict = {"model": settings.embedding_model, "input": texts}
     if settings.embedding_model.startswith("text-embedding-3"):
         payload["dimensions"] = settings.embedding_dim
+    if settings.embedding_input_type:
+        # NVIDIA's E5/Nemotron embedding models run in passage or query mode
+        # and need this; the OpenAI API ignores the extra field.
+        payload["input_type"] = input_type_for(role)
 
     headers = {}
     key = _api_key()
@@ -116,26 +125,40 @@ def _local_embeddings(texts: list[str]) -> list[list[float]]:
     return vectors
 
 
-def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed a batch. Empty strings yield the zero vector, never an error."""
+def embed_texts(texts: list[str], *, role: str = "index") -> list[list[float]]:
+    """Embed a batch. Empty strings yield the zero vector, never an error.
+
+    ``role`` is "index" for documents stored for retrieval (activity
+    descriptions) and "query" for the thing being looked up (event text).
+    """
     if not texts:
         return []
     chosen = provider()
     vectors = (
-        _openai_embeddings(texts) if chosen == OPENAI_PROVIDER else _local_embeddings(texts)
+        _openai_embeddings(texts, role)
+        if chosen == OPENAI_PROVIDER
+        else _local_embeddings(texts)
     )
     if len(vectors) != len(texts):
         raise EmbeddingError(f"Provider returned {len(vectors)} vectors for {len(texts)} inputs.")
     for i, vector in enumerate(vectors):
         if len(vector) != settings.embedding_dim:
+            hint = ""
+            if chosen == OPENAI_PROVIDER:
+                hint = (
+                    f" '{settings.embedding_model}' returns {len(vector)}-wide vectors; set "
+                    f"EMBEDDING_DIM={len(vector)} and drop the *_embeddings tables "
+                    "(see example.env), or pick a model that matches "
+                    f"EMBEDDING_DIM={settings.embedding_dim}."
+                )
             raise EmbeddingError(
-                f"Vector {i} has width {len(vector)}, expected {settings.embedding_dim}."
+                f"Vector {i} has width {len(vector)}, expected {settings.embedding_dim}.{hint}"
             )
     return vectors
 
 
-def embed_one(text: str) -> list[float]:
-    return embed_texts([text])[0]
+def embed_one(text: str, *, role: str = "index") -> list[float]:
+    return embed_texts([text], role=role)[0]
 
 
 def model_name() -> str:

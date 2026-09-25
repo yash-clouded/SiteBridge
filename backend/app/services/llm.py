@@ -11,7 +11,9 @@ extraction instead of guessing.
 """
 from __future__ import annotations
 
+import ipaddress
 import logging
+from urllib.parse import urlparse
 
 import httpx
 
@@ -20,22 +22,38 @@ from ..config import settings
 logger = logging.getLogger(__name__)
 
 DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
 
 
 class LlmNotConfigured(Exception):
-    """No usable LLM endpoint (no API key and default base URL)."""
+    """No usable LLM endpoint (no API key and no reachable keyless server)."""
 
 
 class LlmError(Exception):
     """The endpoint answered with an error or an unusable body."""
 
 
+def _local_endpoint() -> bool:
+    """True for a server that does not need a key (Ollama, vLLM, LAN NIM).
+
+    A hosted endpoint (build.nvidia.com, api.openai.com, ...) is never
+    treated as reachable without a key — that would turn a missing key into
+    a live 401 instead of a clear "not configured".
+    """
+    host = (urlparse(settings.llm_base_url).hostname or "").lower()
+    if host in LOCAL_HOSTS:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_private
+    except ValueError:
+        return False
+
+
 def configured() -> bool:
     """True when an endpoint can realistically be reached."""
     if settings.llm_api_key.strip():
         return True
-    # A non-default base URL is a self-hosted server that needs no key.
-    return settings.llm_base_url.strip().rstrip("/") != DEFAULT_OPENAI_BASE_URL
+    return _local_endpoint()
 
 
 def chat_json(system: str, user: str) -> str:
@@ -65,7 +83,14 @@ def chat_json(system: str, user: str) -> str:
     url = settings.llm_base_url.rstrip("/") + "/chat/completions"
     try:
         with httpx.Client(timeout=settings.llm_timeout_seconds) as client:
-            resp = client.post(url, json=payload, headers=headers)
+            resp = _post(client, url, payload, headers)
+            # Some OpenAI-compatible servers reject `response_format`. The
+            # prompt already demands bare JSON and the parser enforces it, so
+            # dropping the flag is safe and keeps the extractor working.
+            if resp.status_code == 400 and "response_format" in resp.text:
+                logger.warning("Endpoint rejected response_format — retrying without it.")
+                payload.pop("response_format", None)
+                resp = _post(client, url, payload, headers)
     except httpx.HTTPError as exc:
         raise LlmError(f"LLM request failed: {exc}") from exc
 
@@ -79,3 +104,7 @@ def chat_json(system: str, user: str) -> str:
     if not isinstance(content, str) or not content.strip():
         raise LlmError("LLM returned an empty message.")
     return content
+
+
+def _post(client: httpx.Client, url: str, payload: dict, headers: dict) -> httpx.Response:
+    return client.post(url, json=payload, headers=headers)

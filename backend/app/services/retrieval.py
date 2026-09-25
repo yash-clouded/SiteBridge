@@ -119,7 +119,7 @@ def embed_activities(db: Session, project_id: int, *, force: bool = False) -> in
         return 0
 
     texts = [activity_text(n) for n in todo]
-    vectors = embed_texts(texts)
+    vectors = embed_texts(texts, role="index")
     for node, text, vector in zip(todo, texts, vectors):
         row = existing.get(node.id)
         if row is None:
@@ -154,7 +154,7 @@ def embed_event(db: Session, event: ExecutionEvent) -> EventEmbedding | None:
             db.delete(row)
         return None
 
-    vector = embed_texts([text])[0]
+    vector = embed_texts([text], role="query")[0]
     if row is None:
         row = EventEmbedding(
             project_id=event.project_id,

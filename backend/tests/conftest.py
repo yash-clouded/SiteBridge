@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.config import settings
 from app.db import SessionLocal, init_db
 from app.main import app
 from app.models import FieldReport, Project, User
@@ -22,6 +23,21 @@ USERS = {
     "planner": ("planner@test.local", "PLANNER"),
     "pm": ("pm@test.local", "PM"),
 }
+
+
+@pytest.fixture(autouse=True)
+def _offline(monkeypatch):
+    """The suite must never reach a real endpoint, whatever `.env` contains.
+
+    Clearing the key makes `llm.configured()` false, so an unstubbed
+    extraction reports `disabled` instead of paying for (or hanging on) a
+    live call, and embeddings fall back to the local hash provider.
+    Tests that exercise the transport stub `extraction.chat_json` itself.
+    """
+    monkeypatch.setattr(settings, "llm_api_key", "")
+    monkeypatch.setattr(settings, "llm_base_url", "https://api.openai.com/v1")
+    monkeypatch.setattr(settings, "embedding_api_key", "")
+    monkeypatch.setattr(settings, "embedding_provider", "local")
 
 
 @pytest.fixture(scope="session")
