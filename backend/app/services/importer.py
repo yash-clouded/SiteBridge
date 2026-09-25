@@ -292,5 +292,22 @@ def import_schedule(
         logger.warning("%s predecessor/successor references not found in the file.", dangling)
     project.meta["dangling_link_refs"] = dangling
 
+    # Phase 5: embed leaf activity descriptions ONCE, at import.
+    # A provider outage must not lose an import — the vectors can be
+    # rebuilt later with POST /api/projects/{id}/embed.
+    try:
+        from .retrieval import embed_activities
+
+        embedded = embed_activities(db, project.id)
+        project.meta["embedded_activities"] = embedded
+    except Exception:  # noqa: BLE001 — never fail an import over embeddings
+        logger.exception(
+            "Activity embedding failed for project %s — rerun "
+            "POST /api/projects/%s/embed after fixing the provider.",
+            project_code,
+            project_code,
+        )
+        project.meta["embedded_activities"] = 0
+
     db.commit()
     return project

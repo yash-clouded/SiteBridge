@@ -15,12 +15,11 @@ export const ROLE_LABELS: Record<Role, string> = {
  * Where each role lands after login — the first real screen is always the
  * user's actual work, never a welcome page.
  *
- * Phase 2: every role's real work surface is the schedule/WBS browse view.
- * Queue/dashboard landings swap in with their phases (Field submit page
- * in Phase 3, Planner queue in Phase 8, PM rollup in Phase 10).
+ * Field users land on their submission screen (their real work, Phase 3);
+ * planner queue (Phase 8) and PM rollup (Phase 10) swap in with their phases.
  */
 const HOME_BY_ROLE: Record<Role, string> = {
-  FIELD: "/",
+  FIELD: "/submit",
   PLANNER: "/",
   PM: "/",
 };

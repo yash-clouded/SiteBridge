@@ -51,6 +51,7 @@ def main() -> None:
 
         if db.scalar(select(Project).where(Project.code == PROJECT_CODE)) is not None:
             print(f"Project {PROJECT_CODE} already imported — skipping.")
+            _backfill_embeddings(db, PROJECT_CODE)
             return
 
         project = import_schedule(
@@ -77,8 +78,25 @@ def main() -> None:
         print(f"  weighting field: {project.weighting_field}")
         print(f"  leaves by discipline: {dict(by_discipline)}")
         print(f"  dangling link refs:   {project.meta.get('dangling_link_refs')}")
+        _backfill_embeddings(db, PROJECT_CODE)
     finally:
         db.close()
+
+
+def _backfill_embeddings(db: Session, project_code: str) -> None:
+    """Phase 5: make sure the imported leaves have vectors (idempotent)."""
+    from app.services.retrieval import embed_activities
+
+    project = db.scalar(select(Project).where(Project.code == project_code))
+    if project is None:
+        return
+    try:
+        embedded = embed_activities(db, project.id)
+        db.commit()
+        print(f"  embedded activities: {embedded} new vector(s)")
+    except Exception as exc:  # noqa: BLE001 — embeddings must not block the demo
+        db.rollback()
+        print(f"  embedding skipped: {exc}")
 
 
 if __name__ == "__main__":

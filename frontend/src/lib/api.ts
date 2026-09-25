@@ -136,3 +136,16 @@ export interface ImportResponse {
   project: Project;
   message: string;
 }
+
+/* ---- Phase 3 types ---- */
+
+export interface ReportOut {
+  id: number;
+  project_id: number;
+  user_id: number;
+  source_type: string; // text | voice | dpr | txt | excel | pdf
+  raw_text: string;
+  filename: string | null;
+  pointer: Record<string, unknown>; // evidence pointer (page/row/timestamp)
+  created_at: string;
+}

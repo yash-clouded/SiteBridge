@@ -2,15 +2,36 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Role } from "@/lib/api";
 import { ROLE_LABELS, useAuth } from "@/lib/auth";
 
 /**
- * Sidebar + top bar shell.
- * Phase 1 has a single real destination; role-based navigation items are
- * added in Phase 2 (roles live entirely outside the WBS hierarchy).
+ * Sidebar + top bar shell with role-aware navigation.
+ *
+ * Nav items are functions of the user's ROLE (who can see/do what) —
+ * never of WBS levels. All roles keep access to the WBS browse view.
+ * Items are added as their phases land: Planner queue (Phase 8),
+ * PM rollup dashboard (Phase 10).
  */
-const NAV: { href: string; label: string; exact?: boolean }[] = [
-  { href: "/", label: "Projects", exact: true },
+interface NavItem {
+  href: string;
+  label: string;
+  roles?: Role[];
+  active: (pathname: string) => boolean;
+}
+
+const NAV: NavItem[] = [
+  {
+    href: "/",
+    label: "Projects",
+    active: (p) => p === "/" || p.startsWith("/projects"),
+  },
+  {
+    href: "/submit",
+    label: "Submit update",
+    roles: ["FIELD"],
+    active: (p) => p === "/submit",
+  },
 ];
 
 export function Shell({
@@ -25,6 +46,27 @@ export function Shell({
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
+  const visibleNav = NAV.filter(
+    (item) => !item.roles || (user ? item.roles.includes(user.role) : false),
+  );
+
+  const renderLink = (item: NavItem, extraClass: string) => {
+    const active = item.active(pathname);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={`${extraClass} ${
+          active
+            ? "bg-white/10 font-medium text-white"
+            : "text-white/65 hover:bg-white/5 hover:text-white"
+        }`}
+      >
+        {item.label}
+      </Link>
+    );
+  };
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar — structure, not decoration */}
@@ -33,22 +75,7 @@ export function Shell({
           <span className="text-[15px] font-semibold tracking-tight">SiteBridge</span>
         </div>
         <nav className="flex-1 space-y-0.5 p-2">
-          {NAV.map((item) => {
-            const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`block rounded px-3 py-1.5 text-[13px] transition-colors ${
-                  active
-                    ? "bg-white/10 font-medium text-white"
-                    : "text-white/65 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+          {visibleNav.map((item) => renderLink(item, "block rounded px-3 py-1.5 text-[13px] transition-colors"))}
         </nav>
         <div className="border-t border-white/10 px-4 py-3 text-[11px] text-white/40">
           Schedule intelligence layer
@@ -65,23 +92,10 @@ export function Shell({
             ) : null}
             {/* Narrow-viewport nav (sidebar is desktop-only) */}
             <nav className="ml-2 flex gap-2 md:hidden">
-              {NAV.map((item) => {
-                const active = item.exact
-                  ? pathname === item.href
-                  : pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`text-[13px] ${active ? "font-medium text-accent" : "text-ink-2"}`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
+              {visibleNav.map((item) => renderLink(item, "text-[13px]"))}
             </nav>
           </div>
-          <div className="flex items-center gap-3 text-[12px]">
+          <div className="flex shrink-0 items-center gap-3 text-[12px]">
             {user ? (
               <>
                 <span className="text-ink-2">{user.full_name}</span>

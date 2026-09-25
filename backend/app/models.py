@@ -34,7 +34,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
+from .config import settings
 from .db import Base
 
 
@@ -145,3 +147,229 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(32), index=True)  # Role.value
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: field intake — raw input + pointer stored as evidence.
+# Every downstream record (execution event, match, approval) references
+# this table, so the full chain traces back to the original submission.
+# ---------------------------------------------------------------------------
+
+class FieldReport(Base):
+    """One raw field submission, exactly as received.
+
+    `pointer` records where the text came from inside the source artifact:
+      pdf  -> {"pages": [1, 2], "page_offsets": [{"page": 1, "start": 0, "end": 142}, ...]}
+      excel-> {"sheet": "DPR", "rows": {"start": 1, "end": 14}}      (single tab)
+             {"sheets": [{"sheet": "DPR", "start": 1, "end": 14}, ...]}  (multi-tab)
+      txt  -> {"chars": 512}
+      text -> {}   (typed directly)
+      voice-> {"timestamp": "2026-09-25T08:31:00Z"}  (transcribed before intake)
+      dpr  -> {"day": "2026-09-25", "sheet": ..., "rows": ...}
+    """
+
+    __tablename__ = "field_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # text | voice | dpr | txt | excel | pdf
+    source_type: Mapped[str] = mapped_column(String(16))
+    raw_text: Mapped[str] = mapped_column(Text)
+    filename: Mapped[Optional[str]] = mapped_column(String(255))
+    pointer: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    # Phase 4: has the one-extraction-per-report run happened yet?
+    # pending | extracted | failed | disabled
+    extraction_status: Mapped[str] = mapped_column(String(16), default="pending")
+    extraction_error: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped[User] = relationship()
+    event: Mapped[Optional["ExecutionEvent"]] = relationship(
+        back_populates="report", cascade="all, delete-orphan", uselist=False
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: execution events — one structured record per report, produced by
+# exactly one LLM call. Every field that the report does not state is NULL:
+# the model is told to omit rather than guess, and anything it omits becomes
+# null here. Nothing downstream may treat null as a value.
+# ---------------------------------------------------------------------------
+
+# Bumped whenever the extraction prompt changes — stored on every event so
+# re-extraction after a prompt change is detectable.
+PROMPT_VERSION = "v1"
+
+
+class ExecutionEvent(Base):
+    """A structured execution event extracted from one FieldReport."""
+
+    __tablename__ = "execution_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    # Evidence chain: every event points at the raw submission it came from.
+    field_report_id: Mapped[int] = mapped_column(
+        ForeignKey("field_reports.id", ondelete="CASCADE"), unique=True, index=True
+    )
+
+    # Extracted fields — null means "not stated in the report", never "zero".
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    discipline: Mapped[Optional[str]] = mapped_column(String(128), index=True)
+    location: Mapped[Optional[str]] = mapped_column(String(128), index=True)
+    tag: Mapped[Optional[str]] = mapped_column(String(128), index=True)
+    event_date: Mapped[Optional[date]] = mapped_column(Date, index=True)
+    status: Mapped[Optional[str]] = mapped_column(String(64))
+    quantity: Mapped[Optional[float]] = mapped_column(Float)
+    progress: Mapped[Optional[float]] = mapped_column(Float)  # percent as stated
+
+    # Audit trail for the extraction itself.
+    model: Mapped[Optional[str]] = mapped_column(String(128))
+    prompt_version: Mapped[str] = mapped_column(String(32), default=PROMPT_VERSION)
+    raw_model_response: Mapped[Optional[str]] = mapped_column(Text)
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    # Phase 8: review lifecycle (PENDING | NEEDS_MANUAL | APPROVED | REJECTED).
+    review_status: Mapped[str] = mapped_column(String(24), default="PENDING", index=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    report: Mapped[FieldReport] = relationship(back_populates="event")
+    candidates: Mapped[list["MatchCandidate"]] = relationship(
+        back_populates="event", cascade="all, delete-orphan"
+    )
+    rule_checks: Mapped[list["RuleCheck"]] = relationship(
+        back_populates="event", cascade="all, delete-orphan"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 5: retrieval — embeddings live in their own tables so they can be
+# rebuilt (re-import / re-embed) without touching the schedule data.
+# ---------------------------------------------------------------------------
+
+class ActivityEmbedding(Base):
+    """Vector for ONE leaf activity, embedded once at schedule import."""
+
+    __tablename__ = "activity_embeddings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    wbs_node_id: Mapped[int] = mapped_column(
+        ForeignKey("wbs_nodes.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    content: Mapped[str] = mapped_column(Text)  # exact text that was embedded
+    provider: Mapped[str] = mapped_column(String(32))
+    model: Mapped[str] = mapped_column(String(64))
+    embedding: Mapped[list[float]] = mapped_column(Vector(settings.embedding_dim))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EventEmbedding(Base):
+    """Vector for one execution event's description, embedded at intake."""
+
+    __tablename__ = "event_embeddings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    execution_event_id: Mapped[int] = mapped_column(
+        ForeignKey("execution_events.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    content: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(32))
+    model: Mapped[str] = mapped_column(String(64))
+    embedding: Mapped[list[float]] = mapped_column(Vector(settings.embedding_dim))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class MatchCandidate(Base):
+    """One (event, activity) candidate produced by retrieval.
+
+    `score` / `breakdown` hold the retrieval-stage result (Phase 5); Phase 7
+    overwrites `score` with the final confidence and extends `breakdown` with
+    the rule signals, keeping the individual signals visible either way.
+    """
+
+    __tablename__ = "match_candidates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    field_report_id: Mapped[int] = mapped_column(
+        ForeignKey("field_reports.id", ondelete="CASCADE"), index=True
+    )
+    execution_event_id: Mapped[int] = mapped_column(
+        ForeignKey("execution_events.id", ondelete="CASCADE"), index=True
+    )
+    wbs_node_id: Mapped[int] = mapped_column(
+        ForeignKey("wbs_nodes.id", ondelete="CASCADE"), index=True
+    )
+    rank: Mapped[int] = mapped_column(Integer)
+    # 0..1 cosine similarity between the event and the activity text.
+    semantic_score: Mapped[float] = mapped_column(Float)
+    # 0..1 knowledge-graph context bonus (area / discipline / tag / links).
+    kg_score: Mapped[float] = mapped_column(Float)
+    score: Mapped[float] = mapped_column(Float)
+    breakdown: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    event: Mapped[ExecutionEvent] = relationship(back_populates="candidates")
+    activity: Mapped[WbsNode] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("execution_event_id", "wbs_node_id", name="uq_candidate_event_node"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: deterministic verification — pure code against the relational
+# knowledge graph, never an LLM. Results are tri-state on purpose: `unknown`
+# (missing data on either side) is stored as its own outcome and must never
+# be collapsed into pass or fail downstream.
+# ---------------------------------------------------------------------------
+
+class RuleResult(str, enum.Enum):
+    PASS = "pass"
+    FAIL = "fail"
+    UNKNOWN = "unknown"
+
+
+class RuleCheck(Base):
+    """One rule evaluated for one (event, activity) candidate."""
+
+    __tablename__ = "rule_checks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    execution_event_id: Mapped[int] = mapped_column(
+        ForeignKey("execution_events.id", ondelete="CASCADE"), index=True
+    )
+    wbs_node_id: Mapped[int] = mapped_column(
+        ForeignKey("wbs_nodes.id", ondelete="CASCADE"), index=True
+    )
+    # location | discipline | tag | date_plausibility
+    rule: Mapped[str] = mapped_column(String(48))
+    result: Mapped[str] = mapped_column(String(16))  # RuleResult.value
+    detail: Mapped[Optional[str]] = mapped_column(Text)
+    checked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    event: Mapped[ExecutionEvent] = relationship(back_populates="rule_checks")
+    activity: Mapped[WbsNode] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("execution_event_id", "wbs_node_id", "rule", name="uq_rule_event_node"),
+    )
