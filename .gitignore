@@ -1,0 +1,13 @@
+# Freebuff app internals
+.freebuff/
+
+# Python / backend
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+.env.*
+
+# OS
+.DS_Store

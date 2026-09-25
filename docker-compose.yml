@@ -1,0 +1,20 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: sitebridge-db
+    environment:
+      POSTGRES_USER: sitebridge
+      POSTGRES_PASSWORD: sitebridge
+      POSTGRES_DB: sitebridge
+    ports:
+      - "5432:5432"
+    volumes:
+      - sitebridge_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sitebridge -d sitebridge"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  sitebridge_pgdata:

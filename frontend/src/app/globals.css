@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  /* Enterprise project-controls palette — functional, no gradients */
+  --color-surface: #f5f6f8;
+  --color-panel: #ffffff;
+  --color-panel-2: #fafbfc;
+  --color-ink: #1c2333;
+  --color-ink-2: #5b6472;
+  --color-ink-3: #858d9b;
+  --color-line: #e2e5ea;
+  --color-line-2: #d3d8e0;
+  --color-accent: #2c5cbd;
+  --color-accent-strong: #244ea3;
+  --color-amber: #b45309;
+  --color-amber-bg: #fdf3e3;
+  --color-green: #15803d;
+  --color-green-bg: #e7f5ec;
+  --color-red: #b91c1c;
+  --color-red-bg: #fbeaea;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+/* Dense, utilitarian table defaults */
+table {
+  border-collapse: collapse;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Only for real state changes (a row appearing / a confirm transition) */
+.row-in {
+  animation: row-in 160ms ease-out;
+}
