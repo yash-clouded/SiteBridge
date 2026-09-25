@@ -30,9 +30,11 @@ def _offline(monkeypatch):
     """The suite must never reach a real endpoint, whatever `.env` contains.
 
     Clearing the key makes `llm.configured()` false, so an unstubbed
-    extraction reports `disabled` instead of paying for (or hanging on) a
-    live call, and embeddings fall back to the local hash provider.
-    Tests that exercise the transport stub `extraction.chat_json` itself.
+    extraction falls back to Phase 11's heuristic rung (or reports
+    `disabled` when EXTRACTION_FALLBACK=off) instead of paying for — or
+    hanging on — a live call, and embeddings resolve to the local hash
+    provider. Tests that exercise the transport stub `extraction.chat_json`
+    itself; tests about the ladder stub `llm._call`.
     """
     monkeypatch.setattr(settings, "llm_api_key", "")
     monkeypatch.setattr(settings, "llm_base_url", "https://api.openai.com/v1")

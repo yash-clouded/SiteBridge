@@ -505,6 +505,14 @@ function DetailPanel({
           <div className="text-[12px] font-medium text-ink-2">Extracted event</div>
           {event ? (
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+              <Field
+                label="Extracted by"
+                value={
+                  event.model?.startsWith("heuristic")
+                    ? "Pattern match (no LLM)"
+                    : (event.model ?? null)
+                }
+              />
               <Field label="Description" value={event.description} />
               <Field label="Discipline" value={event.discipline} />
               <Field label="Location" value={event.location} />

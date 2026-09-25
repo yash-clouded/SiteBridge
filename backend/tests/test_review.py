@@ -258,11 +258,16 @@ def test_decisions_are_planner_only(client, stub_llm, project_id):
     assert review(client, field, report["id"], "reopen").status_code == 403
 
 
-def test_approval_without_an_event_is_a_clear_409(client, project_id):
-    """A disabled extraction (no LLM) must not read as an approval failure."""
+def test_approval_without_an_event_is_a_clear_409(client, project_id, monkeypatch):
+    """A report with no event yet must not read as an approval failure."""
+    from app.config import settings as app_settings
+
+    # no event at intake: Phase 11 would otherwise create one heuristically
+    monkeypatch.setattr(app_settings, "auto_extract_on_intake", False)
     planner = login(client, "planner")["access_token"]
     field = login(client, "field")["access_token"]
     report = submit(client, field, project_id, "Area C grounding grid installed")
+    assert report["extraction_status"] in {"pending", "disabled"}
 
     resp = review(client, planner, report["id"], "approve")
     assert resp.status_code == 409

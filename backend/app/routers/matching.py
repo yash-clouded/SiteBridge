@@ -4,8 +4,9 @@
   GET  /api/reports/{id}/match     Planner / PM: read the stored result
   POST /api/projects/{id}/embed    Planner: (re)build leaf activity vectors
 
-Auto-processing also runs at intake (Phase 3) when an LLM is configured, so
-these endpoints are for re-runs, backfills and the review screen.
+Auto-processing also runs at intake (Phase 3) whenever extraction can run —
+an endpoint on the Phase 11 ladder, or the heuristic rung — so these
+endpoints are for re-runs, backfills and the review screen.
 """
 from __future__ import annotations
 
@@ -37,6 +38,7 @@ from ..schemas import (
 )
 from ..security import require_roles
 from ..services.embeddings import EmbeddingError, model_name, provider
+from ..services.retrieval import index_provider
 from ..services.extraction import ExtractionError, get_event
 from ..services.llm import LlmError, LlmNotConfigured
 from ..services.pipeline import PipelineBlocked, process_report
@@ -162,7 +164,7 @@ def embed_project(
     return EmbedResponse(
         project_id=project_id,
         embedded=embedded,
-        provider=provider(),
-        model=model_name(),
+        provider=index_provider(db, project_id) or provider(),
+        model=model_name(index_provider(db, project_id) or provider()),
         dim=settings.embedding_dim,
     )

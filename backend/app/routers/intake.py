@@ -23,8 +23,8 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..db import get_db
-from ..models import FieldReport, Project, Role, User
-from ..schemas import ReportOut, TextReportRequest
+from ..models import ExecutionEvent, FieldReport, MatchCandidate, Project, Role, User, WbsNode
+from ..schemas import ReportListOut, ReportOut, TextReportRequest
 from ..security import get_current_user, require_roles
 from ..services.pipeline import auto_process
 
@@ -228,17 +228,54 @@ async def submit_file_report(
     )
 
 
-@router.get("/reports", response_model=list[ReportOut])
+@router.get("/reports", response_model=list[ReportListOut])
 def list_reports(
     project_id: int | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-) -> list[FieldReport]:
-    """Field users see their own submissions; planners/PM see all
-    (review context for later phases)."""
+) -> list[ReportListOut]:
+    """Field users see their own submissions; planners/PM see all.
+
+    Phase 10: each row carries the outcome — extraction rung (LLM model or
+    heuristic), review status, and the approved activity when there is one —
+    so a field user closes the loop on what happened to their report.
+    """
     query = select(FieldReport).order_by(FieldReport.created_at.desc(), FieldReport.id.desc())
     if user.role == Role.FIELD.value:
         query = query.where(FieldReport.user_id == user.id)
     if project_id is not None:
         query = query.where(FieldReport.project_id == project_id)
-    return list(db.scalars(query.limit(200)).all())
+    reports = list(db.scalars(query.limit(200)).all())
+    if not reports:
+        return []
+
+    report_ids = [r.id for r in reports]
+    events = {
+        event.field_report_id: event
+        for event in db.scalars(
+            select(ExecutionEvent).where(ExecutionEvent.field_report_id.in_(report_ids))
+        ).all()
+    }
+    mapped: dict[int, str] = {}
+    for candidate, node in db.execute(
+        select(MatchCandidate, WbsNode)
+        .join(WbsNode, WbsNode.id == MatchCandidate.wbs_node_id)
+        .where(
+            MatchCandidate.field_report_id.in_(report_ids),
+            MatchCandidate.approved_at.is_not(None),
+        )
+    ).all():
+        mapped[candidate.field_report_id] = f"{node.code} — {node.name}"
+
+    out: list[ReportListOut] = []
+    for report in reports:
+        event = events.get(report.id)
+        out.append(
+            ReportListOut(
+                **ReportOut.model_validate(report).model_dump(),
+                review_status=event.review_status if event else None,
+                extracted_by=event.model if event else None,
+                mapped_activity=mapped.get(report.id),
+            )
+        )
+    return out

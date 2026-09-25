@@ -11,6 +11,8 @@ import json
 import pytest
 import app.services.extraction as extraction
 from conftest import auth, first_project_id, login
+
+from app.config import settings
 from sqlalchemy import func, select
 
 from app.db import SessionLocal
@@ -147,7 +149,12 @@ def test_code_fences_are_tolerated(client, stub_llm):
     assert resp.json()["event"]["description"] == "Graded subgrade Area B"
 
 
-def test_non_json_reply_fails_the_extraction_without_writing_an_event(client, stub_llm):
+def test_non_json_reply_fails_the_extraction_without_writing_an_event(
+    client, stub_llm, monkeypatch
+):
+    """A model that ANSWERS with junk is failed — never downgraded to a rung
+    that would happily guess where the model would not."""
+    monkeypatch.setattr(settings, "auto_extract_on_intake", False)
     field = login(client, "field")["access_token"]
     planner = login(client, "planner")["access_token"]
     pid = first_project_id(client, field)
@@ -172,8 +179,45 @@ def test_non_json_reply_fails_the_extraction_without_writing_an_event(client, st
     assert count == 0, "a half-parsed event was written"
 
 
-def test_llm_unavailable_marks_the_report_and_keeps_the_evidence(client):
-    """No API key -> 'disabled', never a guessed event, never a lost report."""
+def test_no_llm_falls_back_to_the_heuristic_rung(client):
+    """Phase 11: no endpoint -> pattern extraction, still no invention.
+
+    Values the report states are read; everything else stays null, and the
+    event records WHICH rung produced it so the queue can show it.
+    """
+    field = login(client, "field")["access_token"]
+    planner = login(client, "planner")["access_token"]
+    pid = first_project_id(client, field)
+    report = submit(
+        client,
+        field,
+        pid,
+        "Area C grounding grid installed 12 pads on 2026-01-15, 60% complete.",
+    )
+
+    assert report["extraction_status"] == "extracted"
+    assert report["extraction_error"] is None
+
+    resp = process(client, planner, report["id"])
+    assert resp.status_code == 200, resp.text
+    event = resp.json()["event"]
+    assert event["model"] == "heuristic-v1"
+    assert event["prompt_version"] == "heuristic"
+    assert event["location"] == "Area C"
+    assert event["quantity"] == 12.0
+    assert event["progress"] == 60.0
+    assert event["event_date"] == "2026-01-15"
+    assert event["discipline"] is None, "the report names no trade — do not invent one"
+    assert "heuristic-v1" in (event["raw_model_response"] or "")
+
+    # raw evidence is untouched either way
+    stored = db_report(report["id"])
+    assert stored.raw_text.startswith("Area C grounding grid")
+
+
+def test_heuristic_fallback_can_be_switched_off(client, monkeypatch):
+    """EXTRACTION_FALLBACK=off keeps the strict contract: no endpoint, no event."""
+    monkeypatch.setattr(settings, "extraction_fallback", "off")
     field = login(client, "field")["access_token"]
     pid = first_project_id(client, field)
     report = submit(client, field, pid, "Area C grounding grid installed")

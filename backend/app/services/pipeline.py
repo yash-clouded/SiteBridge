@@ -1,14 +1,16 @@
 """Phases 4 -> 5 -> 6 -> 7 as one pipeline over a single field report.
 
-    report  --(Phase 4: one LLM call)-->  execution event
+    report  --(Phase 4: LLM ladder)---->  execution event
             --(Phase 5: pgvector + KG)--> top-K match candidates
             --(Phase 6: pure code)----->  pass/fail/unknown rule checks
             --(Phase 7: pure code)----->  final confidence + re-ranked list
 
 Nothing here invents data: extraction failures leave the report marked
 ``failed``/``disabled`` with no event, and retrieval/verification simply
-have nothing to say. Approval (Phase 8) is a separate, explicit step —
-this pipeline never writes to a schedule activity.
+have nothing to say. When no LLM answers, Phase 11's heuristic rung reads
+the text directly (values the report does not state stay null) and the
+event records which rung produced it. Approval (Phase 8) is a separate,
+explicit step — this pipeline never writes to a schedule activity.
 """
 from __future__ import annotations
 
@@ -19,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from ..models import ExecutionEvent, FieldReport, MatchCandidate, RuleCheck
 from .confidence import rank_and_score
+from . import heuristic
 from .extraction import extract_event, get_event
 from .llm import LlmError, LlmNotConfigured
 from .retrieval import RetrievalError, retrieve
@@ -69,7 +72,15 @@ def process_report(
             "rewrite reviewed evidence."
         )
 
-    if event is None or report.extraction_status != "extracted":
+    # Phase 11: an event extracted by the heuristic rung is a stand-in, not a
+    # result — re-processing upgrades it as soon as an endpoint answers, and
+    # simply re-reads the same text when none does. A model-extracted event is
+    # final for this endpoint and is only re-run when the report has no event.
+    if (
+        event is None
+        or report.extraction_status != "extracted"
+        or event.model == heuristic.MODEL
+    ):
         event = extract_event(db, report)  # Phase 4 (raises on failure)
 
     candidates = retrieve(db, event, top_k=top_k)  # Phase 5

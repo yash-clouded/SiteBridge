@@ -68,6 +68,23 @@ class Settings(BaseSettings):
     confidence_high: float = 0.75
     confidence_medium: float = 0.5
 
+    # --- Phase 11: fallbacks -------------------------------------------------
+    # LLM ladder: LLM_BASE_URL -> LLM_FALLBACK_* -> heuristic extraction.
+    # The fallback endpoint is tried only when the primary FAILS (timeout,
+    # 4xx/5xx, unusable body) — never instead of it while it is healthy.
+    llm_fallback_base_url: str = ""
+    llm_fallback_api_key: str = ""
+    llm_fallback_model: str = ""
+    # What happens when NO endpoint answers:
+    #   "heuristic" -> deterministic pattern extraction (no invention: a value
+    #                  is read only when the report states it, else null)
+    #   "off"       -> the report stays disabled/failed and no event is written
+    extraction_fallback: str = "heuristic"
+    # Embeddings: when the remote provider fails, re-embed with the local
+    # provider ONLY if this project's index is still local. Two vector spaces
+    # are never mixed — a wrong similarity score is worse than a clear error.
+    embedding_fallback_local: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

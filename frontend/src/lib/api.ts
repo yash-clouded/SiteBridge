@@ -243,6 +243,13 @@ export interface MatchOut {
   candidates: Candidate[];
 }
 
+/** A submission plus its outcome (Phase 10): what happened to it. */
+export interface ReportListItem extends ReportOut {
+  review_status: ReviewStatus | null; // null = no event extracted yet
+  extracted_by: string | null; // "heuristic-v1" | <model name>
+  mapped_activity: string | null; // "A1011 — Excavate foundation ..."
+}
+
 /* ---- Phase 8: review queue ---- */
 
 export interface QueueTop {
@@ -301,6 +308,33 @@ export interface RollupOut {
   updated_at: string | null;
 }
 
+/* ---- Phase 11: runtime status ---- */
+
+export interface SystemStatus {
+  llm: {
+    configured: boolean;
+    model: string;
+    endpoint: string;
+    fallback_configured: boolean;
+    fallback_model: string | null;
+    rungs: string[];
+  };
+  embeddings: {
+    provider: string;
+    model: string;
+    dim: number;
+    input_type: boolean;
+    fallback_local: boolean;
+  };
+  extraction: {
+    mode: string; // llm | heuristic | disabled
+    fallback: string;
+    auto_on_intake: boolean;
+  };
+  database: boolean;
+  degraded: string[];
+}
+
 /* ---- Phase 4-8 actions ---- */
 
 export function fetchQueue(params: { projectId?: number; filter?: string } = {}) {
@@ -336,4 +370,19 @@ export function processReport(reportId: number) {
 
 export function fetchRollup(projectId: number) {
   return apiGet<RollupOut>(`/api/projects/${projectId}/rollup`);
+}
+
+/* ---- Phase 10-11 actions ---- */
+
+export function fetchProjects() {
+  return apiGet<Project[]>("/api/projects");
+}
+
+export function fetchReports(projectId?: number) {
+  const suffix = projectId != null ? `?project_id=${projectId}` : "";
+  return apiGet<ReportListItem[]>(`/api/reports${suffix}`);
+}
+
+export function fetchStatus() {
+  return apiGet<SystemStatus>("/api/status");
 }

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Role } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { fetchStatus, type Role, type SystemStatus } from "@/lib/api";
 import { ROLE_LABELS, useAuth } from "@/lib/auth";
 
 /**
@@ -10,8 +11,8 @@ import { ROLE_LABELS, useAuth } from "@/lib/auth";
  *
  * Nav items are functions of the user's ROLE (who can see/do what) —
  * never of WBS levels. All roles keep access to the WBS browse view.
- * Items are added as their phases land: the planner review queue (Phase 8)
- * is in; the PM rollup dashboard (Phase 10) is next.
+ * Items landed with their phases: review queue (Phase 8), PM roll-up
+ * dashboard (Phase 10).
  */
 interface NavItem {
   href: string;
@@ -38,6 +39,12 @@ const NAV: NavItem[] = [
     roles: ["PLANNER", "PM"],
     active: (p) => p.startsWith("/queue"),
   },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    roles: ["PM"],
+    active: (p) => p.startsWith("/dashboard"),
+  },
 ];
 
 export function Shell({
@@ -51,6 +58,22 @@ export function Shell({
 }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  // Phase 11: say out loud when the product is running on a fallback.
+  const [status, setStatus] = useState<SystemStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchStatus()
+      .then((resolved) => {
+        if (!cancelled) setStatus(resolved);
+      })
+      .catch(() => {
+        if (!cancelled) setStatus(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const visibleNav = NAV.filter(
     (item) => !item.roles || (user ? item.roles.includes(user.role) : false),
@@ -118,6 +141,17 @@ export function Shell({
             ) : null}
           </div>
         </header>
+
+        {/* Phase 11: degraded mode is stated, never silent (label + colour). */}
+        {status && status.degraded.length > 0 ? (
+          <div
+            role="status"
+            className="border-b border-amber/30 bg-amber-bg px-5 py-2 text-[12px] leading-5 text-amber"
+          >
+            <span className="font-medium">Running with fallbacks:</span>{" "}
+            {status.degraded.join("  ·  ")}
+          </div>
+        ) : null}
 
         <main className="flex-1 p-5">{children}</main>
       </div>

@@ -31,7 +31,14 @@ from ..models import (
     RuleCheck,
     WbsNode,
 )
-from .embeddings import embed_texts, model_name, provider
+from .embeddings import (
+    LOCAL_PROVIDER,
+    OPENAI_PROVIDER,
+    EmbeddingError,
+    embed_texts,
+    model_name,
+    provider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +105,75 @@ def event_text(event: ExecutionEvent) -> str:
     return ". ".join(parts)
 
 
+def index_provider(db: Session, project_id: int) -> str | None:
+    """Provider this project's index lives in (None = nothing indexed yet).
+
+    The index decides: a query embedded in a different vector space than the
+    activities it is compared against produces confident nonsense, so the
+    configured provider only gets a say while the index is still empty.
+    """
+    stored = list(
+        db.scalars(
+            select(ActivityEmbedding.provider)
+            .where(ActivityEmbedding.project_id == project_id)
+            .distinct()
+        ).all()
+    )
+    if not stored:
+        return None
+    providers = set(stored)
+    if providers == {LOCAL_PROVIDER}:
+        return LOCAL_PROVIDER
+    if OPENAI_PROVIDER in providers:
+        return OPENAI_PROVIDER  # never quietly re-space a live index
+    return stored[0]
+
+
+def _allows_local(db: Session, project_id: int) -> bool:
+    """True when no row of this index was embedded by a remote provider."""
+    return (
+        db.scalar(
+            select(ActivityEmbedding.id)
+            .where(
+                ActivityEmbedding.project_id == project_id,
+                ActivityEmbedding.provider != LOCAL_PROVIDER,
+            )
+            .limit(1)
+        )
+        is None
+    )
+
+
+def embed_for_project(
+    db: Session, project_id: int, texts: list[str], *, role: str
+) -> tuple[list[list[float]], str]:
+    """Embed texts in this project's vector space. Returns (vectors, provider).
+
+    Phase 11 failover: when the remote provider fails and the index is still
+    local (or empty), the batch is embedded locally instead — one coherent
+    vector space, a logged downgrade. When the index is already remote the
+    error is raised: mixing two spaces would corrupt every similarity score.
+    """
+    chosen = index_provider(db, project_id) or provider()
+    try:
+        return embed_texts(texts, role=role, provider_name=chosen), chosen
+    except EmbeddingError as exc:
+        if chosen == OPENAI_PROVIDER and settings.embedding_fallback_local and _allows_local(
+            db, project_id
+        ):
+            logger.warning(
+                "Embedding provider failed for project %s (%s) — falling back to the "
+                "local provider for this index.",
+                project_id,
+                exc,
+            )
+            return (
+                embed_texts(texts, role=role, provider_name=LOCAL_PROVIDER),
+                LOCAL_PROVIDER,
+            )
+        raise
+
+
 def embed_activities(db: Session, project_id: int, *, force: bool = False) -> int:
     """Embed every leaf activity of a project (idempotent, does not commit).
 
@@ -119,7 +195,7 @@ def embed_activities(db: Session, project_id: int, *, force: bool = False) -> in
         return 0
 
     texts = [activity_text(n) for n in todo]
-    vectors = embed_texts(texts, role="index")
+    vectors, used = embed_for_project(db, project_id, texts, role="index")
     for node, text, vector in zip(todo, texts, vectors):
         row = existing.get(node.id)
         if row is None:
@@ -128,18 +204,18 @@ def embed_activities(db: Session, project_id: int, *, force: bool = False) -> in
                     project_id=project_id,
                     wbs_node_id=node.id,
                     content=text,
-                    provider=provider(),
-                    model=model_name(),
+                    provider=used,
+                    model=model_name(used),
                     embedding=vector,
                 )
             )
         else:
             row.content = text
-            row.provider = provider()
-            row.model = model_name()
+            row.provider = used
+            row.model = model_name(used)
             row.embedding = vector
     db.flush()
-    logger.info("Embedded %s activities for project %s", len(todo), project_id)
+    logger.info("Embedded %s activities for project %s with %s", len(todo), project_id, used)
     return len(todo)
 
 
@@ -151,25 +227,29 @@ def embed_event(db: Session, event: ExecutionEvent) -> EventEmbedding | None:
     )
     if not text.strip():
         if row is not None:
+            # Flush the delete: a re-extraction that no longer states anything
+            # must not leave the PREVIOUS run's vector behind for retrieval to
+            # find (the row is keyed on the event id, not on the text).
             db.delete(row)
+            db.flush()
         return None
 
-    vector = embed_texts([text], role="query")[0]
+    vectors, used = embed_for_project(db, event.project_id, [text], role="query")
     if row is None:
         row = EventEmbedding(
             project_id=event.project_id,
             execution_event_id=event.id,
             content=text,
-            provider=provider(),
-            model=model_name(),
-            embedding=vector,
+            provider=used,
+            model=model_name(used),
+            embedding=vectors[0],
         )
         db.add(row)
     else:
         row.content = text
-        row.provider = provider()
-        row.model = model_name()
-        row.embedding = vector
+        row.provider = used
+        row.model = model_name(used)
+        row.embedding = vectors[0]
     db.flush()
     return row
 

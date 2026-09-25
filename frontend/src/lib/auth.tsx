@@ -15,14 +15,14 @@ export const ROLE_LABELS: Record<Role, string> = {
  * Where each role lands after login — the first real screen is always the
  * user's actual work, never a welcome page.
  *
- * Field users land on their submission screen (Phase 3); planners land on
- * the review queue (Phase 8) where their decisions live. The PM rollup
- * dashboard (Phase 10) swaps in with its phase.
+ * Field users land on their submission screen (Phase 3), planners on the
+ * review queue (Phase 8) where their decisions live, and the PM on the
+ * roll-up dashboard (Phase 10) that reports what everyone decided.
  */
 const HOME_BY_ROLE: Record<Role, string> = {
   FIELD: "/submit",
   PLANNER: "/queue",
-  PM: "/",
+  PM: "/dashboard",
 };
 
 export function landingPathFor(role: Role): string {

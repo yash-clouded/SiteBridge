@@ -125,15 +125,21 @@ def _local_embeddings(texts: list[str]) -> list[list[float]]:
     return vectors
 
 
-def embed_texts(texts: list[str], *, role: str = "index") -> list[list[float]]:
+def embed_texts(
+    texts: list[str], *, role: str = "index", provider_name: str | None = None
+) -> list[list[float]]:
     """Embed a batch. Empty strings yield the zero vector, never an error.
 
     ``role`` is "index" for documents stored for retrieval (activity
     descriptions) and "query" for the thing being looked up (event text).
+
+    ``provider_name`` pins the provider (Phase 11): retrieval resolves it
+    from the project's existing index so a query is always embedded in the
+    SAME vector space as the activities it is compared against.
     """
     if not texts:
         return []
-    chosen = provider()
+    chosen = provider_name or provider()
     vectors = (
         _openai_embeddings(texts, role)
         if chosen == OPENAI_PROVIDER
@@ -161,8 +167,8 @@ def embed_one(text: str, *, role: str = "index") -> list[float]:
     return embed_texts([text], role=role)[0]
 
 
-def model_name() -> str:
+def model_name(provider_name: str | None = None) -> str:
     """Name stored alongside a vector so rebuilds are traceable."""
-    if provider() == OPENAI_PROVIDER:
+    if (provider_name or provider()) == OPENAI_PROVIDER:
         return settings.embedding_model
     return f"hash-{settings.embedding_dim}"

@@ -6,7 +6,9 @@ import {
   apiPostForm,
   apiPostJson,
   ApiError,
+  fetchReports,
   type Project,
+  type ReportListItem,
   type ReportOut,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -14,6 +16,33 @@ import { Shell } from "@/components/Shell";
 
 type Mode = "text" | "file";
 type TextSource = "text" | "voice" | "dpr";
+
+/** Which rung extracted it (Phase 11) — a label, never colour alone. */
+function extractionLabel(r: ReportListItem): { text: string; className: string } {
+  if (r.extracted_by) {
+    if (r.extracted_by.startsWith("heuristic")) {
+      return { text: "Pattern (no LLM)", className: "text-amber" };
+    }
+    return { text: r.extracted_by, className: "text-ink-2" };
+  }
+  if (r.extraction_status === "failed") return { text: "Failed", className: "text-red" };
+  if (r.extraction_status === "disabled") return { text: "Not extracted", className: "text-ink-3" };
+  return { text: "Pending", className: "text-ink-3" };
+}
+
+const OUTCOME_LABELS: Record<string, string> = {
+  PENDING: "Awaiting review",
+  NEEDS_MANUAL: "Needs manual mapping",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+};
+
+const OUTCOME_STYLE: Record<string, string> = {
+  PENDING: "text-ink-2",
+  NEEDS_MANUAL: "text-amber",
+  APPROVED: "text-green",
+  REJECTED: "text-red",
+};
 
 const SOURCE_LABELS: Record<string, string> = {
   text: "Typed note",
@@ -62,7 +91,7 @@ export default function SubmitPage() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
-  const [reports, setReports] = useState<ReportOut[] | null>(null);
+  const [reports, setReports] = useState<ReportListItem[] | null>(null);
   const [newestId, setNewestId] = useState<number | null>(null);
 
   const [mode, setMode] = useState<Mode>("text");
@@ -79,7 +108,7 @@ export default function SubmitPage() {
         if (list.length > 0) setProjectId(list[0].id);
       })
       .catch(() => setProjects([]));
-    apiGet<ReportOut[]>("/api/reports")
+    fetchReports()
       .then(setReports)
       .catch(() => setReports([]));
   }, []);
@@ -89,9 +118,14 @@ export default function SubmitPage() {
     [projects, projectId],
   );
 
+  /** Re-read the list so the outcome columns reflect the run that just happened. */
   function record(report: ReportOut) {
-    setReports((prev) => [report, ...(prev ?? [])]);
     setNewestId(report.id);
+    fetchReports()
+      .then(setReports)
+      .catch(() => {
+        /* keep the current list — the submission itself already succeeded */
+      });
   }
 
   async function submitText(e: React.FormEvent) {
@@ -260,13 +294,15 @@ export default function SubmitPage() {
             <p className="px-4 py-3 text-[13px] text-ink-3">No submissions yet.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-[13px]">
+              <table className="w-full min-w-[1120px] text-[13px]">
                 <thead>
                   <tr className="border-b border-line bg-panel-2 text-left text-[12px] text-ink-2">
                     <th className="px-4 py-2 font-medium">Time</th>
                     <th className="px-3 py-2 font-medium">Source</th>
                     <th className="px-3 py-2 font-medium">Evidence</th>
                     <th className="px-3 py-2 font-medium">Preview</th>
+                    <th className="px-3 py-2 font-medium">Extraction</th>
+                    <th className="px-4 py-2 font-medium">Outcome</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,6 +326,25 @@ export default function SubmitPage() {
                       </td>
                       <td className="max-w-[380px] truncate px-3 py-2 text-ink-2">
                         {preview(r.raw_text)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        <span className={extractionLabel(r).className}>
+                          {extractionLabel(r).text}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        {!r.review_status ? (
+                          <span className="text-ink-3">—</span>
+                        ) : (
+                          <span className={OUTCOME_STYLE[r.review_status] ?? "text-ink-2"}>
+                            {OUTCOME_LABELS[r.review_status] ?? r.review_status}
+                            {r.mapped_activity ? (
+                              <span className="block max-w-[260px] truncate text-[12px] text-ink-3">
+                                {r.mapped_activity}
+                              </span>
+                            ) : null}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

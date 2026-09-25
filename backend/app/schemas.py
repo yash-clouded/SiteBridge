@@ -96,6 +96,18 @@ class ReportOut(BaseModel):
     created_at: datetime
 
 
+class ReportListOut(ReportOut):
+    """A submission plus where it ended up (Phase 10).
+
+    FIELD users read their own reports, so this is the loop-closing view:
+    what was extracted (and by which rung) and whether anyone approved it.
+    """
+
+    review_status: Optional[str] = None  # None = no event extracted yet
+    extracted_by: Optional[str] = None  # event.model: "heuristic-v1" | <model>
+    mapped_activity: Optional[str] = None  # "A1011 — Excavate foundation ..."
+
+
 # --- Execution events + matching (Phases 4-6) -------------------------------
 
 class ExecutionEventOut(BaseModel):

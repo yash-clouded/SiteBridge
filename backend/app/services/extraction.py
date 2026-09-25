@@ -1,4 +1,10 @@
-"""Phase 4: extraction — one LLM call per report, one structured event.
+"""Phase 4 + Phase 11: extraction — one rung of the ladder per report.
+
+Ladder (Phase 11): primary LLM endpoint -> configured fallback endpoint ->
+heuristic pattern extraction (`services/heuristic.py`). A rung is only
+skipped when it cannot answer — a healthy model is never bypassed, and a
+model that ANSWERS with something unusable is marked `failed` rather than
+silently replaced (refusing to store it is the point).
 
 Contract:
   * JSON only. The prompt demands a bare JSON object; the parser rejects
@@ -23,7 +29,8 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import PROMPT_VERSION, ExecutionEvent, FieldReport
-from .llm import LlmNotConfigured, chat_json
+from . import heuristic
+from .llm import LlmError, LlmNotConfigured, chat_json
 
 logger = logging.getLogger(__name__)
 
@@ -165,11 +172,22 @@ def get_event(db: Session, report: FieldReport) -> ExecutionEvent | None:
     return db.scalar(select(ExecutionEvent).where(ExecutionEvent.field_report_id == report.id))
 
 
+def _enabled() -> bool:
+    """Phase 11 switch: is the heuristic rung of the ladder in use?"""
+    return settings.extraction_fallback.strip().lower() == "heuristic"
+
+
+def _mark_unusable(db: Session, report: FieldReport, status: str, error: str) -> None:
+    report.extraction_status = status
+    report.extraction_error = error[:2000]
+    db.commit()
+
+
 def extract_event(db: Session, report: FieldReport) -> ExecutionEvent:
     """Create (or update) the execution event for a report. Commits on success.
 
-    On failure the report is marked `failed` with the reason, and the
-    exception is re-raised so callers can report it — no partial event.
+    On failure the report is marked `failed`/`disabled` with the reason, and
+    the exception is re-raised so callers can report it — no partial event.
     """
     existing = get_event(db, report)
     if existing is not None and existing.review_status in {"APPROVED", "REJECTED"}:
@@ -180,15 +198,34 @@ def extract_event(db: Session, report: FieldReport) -> ExecutionEvent:
 
     try:
         fields = extract_fields(report)
-    except LlmNotConfigured as exc:
-        report.extraction_status = "disabled"
-        report.extraction_error = str(exc)
-        db.commit()
+        raw = fields.pop("_raw", None)
+        model, prompt_version = settings.llm_model, PROMPT_VERSION
+    except (LlmNotConfigured, LlmError) as exc:
+        # Phase 11: no endpoint answered -> the heuristic rung, or a marked
+        # report when the ladder is switched off.
+        if not _enabled():
+            _mark_unusable(
+                db,
+                report,
+                "disabled" if isinstance(exc, LlmNotConfigured) else "failed",
+                str(exc),
+            )
+            raise
+        logger.warning(
+            "Report %s: no LLM endpoint answered (%s) — using the heuristic extractor.",
+            report.id,
+            exc,
+        )
+        fields = heuristic.extract(report.raw_text)
+        model, prompt_version = heuristic.MODEL, heuristic.PROMPT_VERSION
+        raw = heuristic.raw_response(fields)
+    except ExtractionError as exc:
+        # The model answered and we refuse to store it — no silent downgrade
+        # to a rung that would happily guess where the model would not.
+        _mark_unusable(db, report, "failed", str(exc))
         raise
     except Exception as exc:  # noqa: BLE001 — any transport/parse failure
-        report.extraction_status = "failed"
-        report.extraction_error = str(exc)[:2000]
-        db.commit()
+        _mark_unusable(db, report, "failed", str(exc))
         raise
 
     if existing is None:
@@ -197,12 +234,11 @@ def extract_event(db: Session, report: FieldReport) -> ExecutionEvent:
         )
         db.add(existing)
 
-    raw = fields.pop("_raw")
     for key, value in fields.items():
         setattr(existing, key, value)
     existing.project_id = report.project_id
-    existing.model = settings.llm_model
-    existing.prompt_version = PROMPT_VERSION
+    existing.model = model
+    existing.prompt_version = prompt_version
     existing.raw_model_response = raw
     existing.extracted_at = datetime.now(timezone.utc)
     if existing.review_status in {"NEEDS_MANUAL", "REJECTED"}:
@@ -212,5 +248,10 @@ def extract_event(db: Session, report: FieldReport) -> ExecutionEvent:
     report.extraction_error = None
     db.commit()
     db.refresh(existing)
-    logger.info("Extracted execution event %s from report %s", existing.id, report.id)
+    logger.info(
+        "Extracted execution event %s from report %s (rung: %s)",
+        existing.id,
+        report.id,
+        model or "unknown",
+    )
     return existing
