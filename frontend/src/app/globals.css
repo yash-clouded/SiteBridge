@@ -1,23 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  /* Enterprise project-controls palette — functional, no gradients */
-  --color-surface: #f5f6f8;
+  --color-surface: #eaedf1;
   --color-panel: #ffffff;
-  --color-panel-2: #fafbfc;
-  --color-ink: #1c2333;
+  --color-panel-2: #f8fafc;
+  --color-ink: #181b22;
   --color-ink-2: #5b6472;
   --color-ink-3: #858d9b;
-  --color-line: #e2e5ea;
-  --color-line-2: #d3d8e0;
-  --color-accent: #2c5cbd;
-  --color-accent-strong: #244ea3;
+  --color-line: #dfe4ea;
+  --color-line-2: #cbd2dc;
+  --color-accent: #0d6efd;
+  --color-accent-strong: #0b5ed7;
   --color-amber: #b45309;
   --color-amber-bg: #fdf3e3;
-  --color-green: #15803d;
-  --color-green-bg: #e7f5ec;
+  --color-green: #198754;
+  --color-green-bg: #ebfaef;
   --color-red: #b91c1c;
-  --color-red-bg: #fbeaea;
+  --color-red-bg: #fdf2f2;
 }
 
 @theme inline {
@@ -34,9 +33,82 @@ body {
   border-color: var(--color-line);
 }
 
-/* Dense, utilitarian table defaults */
 table {
   border-collapse: collapse;
+}
+
+.ibadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 2px;
+  line-height: 1;
+}
+
+.ibadge-pending {
+  background-color: #fff8e6;
+  color: #8f6000;
+  border: 1px solid #ffe199;
+}
+
+.ibadge-approved {
+  background-color: #ebfaef;
+  color: #086e24;
+  border: 1px solid #b6ebc4;
+}
+
+.ibadge-corrected {
+  background-color: #eff6ff;
+  color: #0c4a9e;
+  border: 1px solid #bfdbfe;
+}
+
+.ibadge-rejected {
+  background-color: #fdf2f2;
+  color: #9e1a1a;
+  border: 1px solid #f8b4b4;
+}
+
+.eng-table th {
+  background: #eaedf1;
+  color: #3b424e;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid #cbd2dc;
+}
+
+.eng-table td {
+  font-size: 12px;
+  border-bottom: 1px solid #e5e9f0;
+  vertical-align: middle;
+}
+
+.eng-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+.prog-track {
+  background: #e2e7ec;
+  height: 18px;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid #cbd2dc;
+}
+
+.prog-fill-blue {
+  background: #0b5ed7;
+}
+
+.prog-fill-amber {
+  background: #d97706;
+}
+
+.prog-fill-green {
+  background: #198754;
 }
 
 @keyframes row-in {
@@ -50,7 +122,6 @@ table {
   }
 }
 
-/* Only for real state changes (a row appearing / a confirm transition) */
 .row-in {
   animation: row-in 160ms ease-out;
 }
