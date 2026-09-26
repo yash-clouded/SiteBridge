@@ -36,7 +36,7 @@ from ..schemas import (
     ReportOut,
     RuleCheckOut,
 )
-from ..security import require_roles
+from ..security import require_roles, roles_for
 from ..services.embeddings import EmbeddingError, model_name, provider
 from ..services.retrieval import index_provider
 from ..services.extraction import ExtractionError, get_event
@@ -125,7 +125,7 @@ def _run(db: Session, report: FieldReport, **kwargs) -> MatchOut:
 def process_report_endpoint(
     report_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(Role.PLANNER)),
+    user=Depends(roles_for("review")),
 ) -> MatchOut:
     """Run extraction -> retrieval -> verification for one report."""
     report = _report(db, report_id)
@@ -136,7 +136,7 @@ def process_report_endpoint(
 def get_match(
     report_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(Role.PLANNER, Role.PM)),
+    user=Depends(roles_for("review")),
 ) -> MatchOut:
     """Read-only view of the event, its candidates and their rule results."""
     return build_match(db, _report(db, report_id))
@@ -147,7 +147,7 @@ def embed_project(
     project_id: int,
     force: bool = False,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(Role.PLANNER)),
+    user=Depends(roles_for("review")),
 ) -> EmbedResponse:
     """Embed (or rebuild) every leaf activity of a project."""
     project = db.get(Project, project_id)
