@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { apiGet, apiPostForm, ApiError, type ImportResponse, type Project } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Shell } from "@/components/Shell";
+import { WorkstationShowcase } from "@/components/WorkstationShowcase";
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -37,7 +38,10 @@ export default function ProjectsPage() {
     }
   }
 
-  return (
+  return <Shell title="SiteBridge Workstation" subtitle="Integrated project controls interface"><WorkstationShowcase /></Shell>;
+
+  /* Existing project browser retained below for the live API-backed project view. */
+    return (
     <Shell title="Projects">
       <div className="mx-auto max-w-6xl space-y-5">
         {/* Import panel — planner-only function (roles gate functions, not tree levels) */}
