@@ -102,7 +102,7 @@ export default function DashboardPage() {
   const buckets: RollupBucket[] = rollup ? rollup[tab] : [];
   const seriesMax = Math.max(1, ...(rollup?.series.map((p) => p.approved) ?? [0]));
 
-  if (user && user.role !== "PM") {
+  if (user && !["PM", "CLIENT", "PROJECT_MANAGER"].includes(user.role)) {
     return (
       <Shell title="Work progress">
         <p className="text-[13px] text-ink-2">
