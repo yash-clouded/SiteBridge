@@ -38,10 +38,11 @@ export default function ProjectsPage() {
     }
   }
 
-  return <Shell title="SiteBridge Workstation" subtitle="Integrated project controls interface"><WorkstationShowcase /></Shell>;
+  return <Shell title="SiteBridge Workstation" subtitle="Integrated project controls interface"><WorkstationShowcase /><div className="mt-6" />
 
-  /* Existing project browser retained below for the live API-backed project view. */
-    return (
+  {/* Existing API-backed project browser remains below. */}
+  <div>
+
     <Shell title="Projects">
       <div className="mx-auto max-w-6xl space-y-5">
         {/* Import panel — planner-only function (roles gate functions, not tree levels) */}
@@ -108,7 +109,7 @@ export default function ProjectsPage() {
           </div>
           {error ? (
             <p className="px-4 py-3 text-[13px] text-red">{error}</p>
-          ) : !projects ? (
+          ) : projects === null ? (
             <p className="px-4 py-3 text-[13px] text-ink-3">Loading…</p>
           ) : projects.length === 0 ? (
             <p className="px-4 py-3 text-[13px] text-ink-3">
@@ -159,6 +160,7 @@ export default function ProjectsPage() {
           )}
         </section>
       </div>
+  </div>
     </Shell>
   );
 }
