@@ -33,7 +33,8 @@ SEED_USERS = [
 
 def ensure_users(db: Session) -> None:
     for email, name, role in SEED_USERS:
-        if db.scalar(select(User).where(User.email == email)) is None:
+        user = db.scalar(select(User).where(User.email == email))
+        if user is None:
             db.add(
                 User(
                     email=email,
@@ -42,6 +43,12 @@ def ensure_users(db: Session) -> None:
                     role=role,
                 )
             )
+        else:
+            # Keep the checked-in demo accounts aligned with the seven-role model
+            # when running seed.py against an older local database.
+            user.full_name = name
+            user.role = role
+            user.is_active = True
     db.commit()
 
 
