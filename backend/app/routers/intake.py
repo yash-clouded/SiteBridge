@@ -29,7 +29,7 @@ from ..config import settings
 from ..db import get_db
 from ..models import ExecutionEvent, FieldReport, MatchCandidate, Project, Role, User, WbsNode
 from ..schemas import ReportListOut, ReportOut, TextReportRequest
-from ..security import get_current_user, require_roles
+from ..security import get_current_user, require_roles, roles_for
 from ..services.pipeline import auto_process
 from ..services.translate import translate_report
 
@@ -95,7 +95,7 @@ def _finish(db: Session, report: FieldReport, language: str | None = None) -> Fi
 def submit_text_report(
     payload: TextReportRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(Role.FIELD)),
+    user: User = Depends(roles_for("submit")),
 ) -> FieldReport:
     """Accept a typed report, a voice transcript, or a DPR note."""
     raw = payload.raw_text.strip()
@@ -191,7 +191,7 @@ async def submit_file_report(
     file: UploadFile = File(...),
     project_id: int = Form(...),
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(Role.FIELD)),
+    user: User = Depends(roles_for("submit")),
 ) -> FieldReport:
     """Accept a PDF / Excel / text file and store it with a pointer
     (page / sheet+rows / char count) as evidence."""
