@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useAuth } from "@/lib/auth";
 
 export type WorkstationRole =
   | "CLIENT"
@@ -284,7 +285,34 @@ function Machine({ name, note, status, cost, danger = false }: { name: string; n
 }
 
 export function WorkstationShowcase() {
-  const [role, setRole] = useState<WorkstationRole>("SITE OPERATIVES");
+  const { user } = useAuth();
+  const [selectedRole, setSelectedRole] = useState<WorkstationRole | null>(null);
+
+  const roleForUser = (value: string | undefined): WorkstationRole => {
+    switch (value) {
+      case "CLIENT":
+        return "CLIENT";
+      case "PROJECT_MANAGER":
+      case "PM":
+        return "PROJECT MANAGER";
+      case "CONTRACTOR":
+        return "CONTRACTOR";
+      case "SITE_ENGINEER":
+        return "SITE ENGINEER";
+      case "SITE_OPERATIVES":
+      case "FIELD":
+        return "SITE OPERATIVES";
+      case "PLANNER":
+        return "PLANNER / PROJECT CONTROLS";
+      case "DISCIPLINE_ENGINEER":
+        return "DISCIPLINE ENGINEER";
+      default:
+        return "SITE OPERATIVES";
+    }
+  };
+
+  const role = selectedRole ?? roleForUser(user?.role);
+
   const view = useMemo(() => {
     switch (role) {
       case "CLIENT": return <ClientWorkspace />;
@@ -296,5 +324,5 @@ export function WorkstationShowcase() {
       default: return <SiteOperativeWorkspace />;
     }
   }, [role]);
-  return <div className="min-h-[calc(100vh-7rem)]"><div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-300 pb-3"><div><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Integrated workstation</div><h1 className="mt-1 text-base font-bold uppercase tracking-wide text-slate-900">{role}</h1></div><label className="flex items-center gap-2 text-[11px] text-slate-600">View role<select value={role} onChange={(e) => setRole(e.target.value as WorkstationRole)} className="rounded-[2px] border border-slate-300 bg-white px-2 py-1.5 font-mono text-[11px] text-slate-800">{ROLES.map((item) => <option key={item}>{item}</option>)}</select></label></div>{view}</div>;
+  return <div className="min-h-[calc(100vh-7rem)]"><div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-300 pb-3"><div><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Integrated workstation</div><h1 className="mt-1 text-base font-bold uppercase tracking-wide text-slate-900">{role}</h1></div><label className="flex items-center gap-2 text-[11px] text-slate-600">View role<select value={role} onChange={(e) => setSelectedRole(e.target.value as WorkstationRole)} className="rounded-[2px] border border-slate-300 bg-white px-2 py-1.5 font-mono text-[11px] text-slate-800">{ROLES.map((item) => <option key={item}>{item}</option>)}</select></label></div>{view}</div>;
 }
