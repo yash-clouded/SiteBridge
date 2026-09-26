@@ -107,7 +107,7 @@ export default function DashboardPage() {
       <Shell title="Work progress">
         <p className="text-[13px] text-ink-2">
           The roll-up dashboard reports the whole project — it is for the PM role.
-          {user.role === "PLANNER" ? " Your decisions live in the review queue." : ""}
+          {user.role === "PLANNER" || user.role === "SITE_ENGINEER" || user.role === "DISCIPLINE_ENGINEER" ? " Your review decisions live in the schedule desk." : ""}
         </p>
       </Shell>
     );
