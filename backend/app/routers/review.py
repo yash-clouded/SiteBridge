@@ -64,7 +64,7 @@ def review_queue(
     filter: str = "all",  # all | pending | approved | rejected
     limit: int = 100,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(Role.PLANNER, Role.PM)),
+    user=Depends(roles_for("review")) ,
 ) -> QueueOut:
     """Reports with their top candidate — the planner's work list."""
     query = (
@@ -184,7 +184,7 @@ def approve_endpoint(
     report_id: int,
     payload: Optional[ApproveRequest] = None,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(Role.PLANNER)),
+    user=Depends(roles_for("review")),
 ) -> MatchOut:
     """Approve a candidate (default: rank 1) and publish the activity actuals."""
     body = payload or ApproveRequest()
@@ -203,7 +203,7 @@ def reject_endpoint(
     report_id: int,
     payload: Optional[ReviewNote] = None,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(Role.PLANNER)),
+    user=Depends(roles_for("review")),
 ) -> MatchOut:
     """Refuse the match; the report and its evidence are kept intact."""
     body = payload or ReviewNote()
@@ -215,7 +215,7 @@ def reopen_endpoint(
     report_id: int,
     payload: Optional[ReviewNote] = None,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(Role.PLANNER)),
+    user=Depends(roles_for("review")),
 ) -> MatchOut:
     """Undo a decision: back to PENDING, actuals this report wrote are cleared."""
     body = payload or ReviewNote()
