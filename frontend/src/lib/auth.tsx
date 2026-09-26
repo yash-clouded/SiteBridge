@@ -6,8 +6,8 @@ import { apiPostJson, AUTH_KEY, storedAuth, type Role, type TokenResponse, type 
 
 /** Human labels for the three roles (function-based, never WBS-level-based). */
 export const ROLE_LABELS: Record<Role, string> = {
-  FIELD: "Field User",
-  PLANNER: "Planner",
+  FIELD: "Site Operatives",
+  PLANNER: "Planner / Project Controls",
   PM: "Project Manager",
 };
 
