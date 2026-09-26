@@ -33,7 +33,7 @@ export default function ProjectWbsPage() {
 
   if (error) {
     return (
-      <Shell title="Work breakdown structure">
+      <Shell title="Project workspace">
         <p className="text-[13px] text-red">{error}</p>
       </Shell>
     );
