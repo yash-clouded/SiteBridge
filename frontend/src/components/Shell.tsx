@@ -6,17 +6,10 @@ import { useEffect, useState } from "react";
 import { fetchStatus, type Role, type SystemStatus } from "@/lib/api";
 import { ROLE_LABELS, useAuth } from "@/lib/auth";
 
-/**
- * Sidebar + top bar shell with role-aware navigation.
- *
- * Nav items are functions of the user's ROLE (who can see/do what) —
- * never of WBS levels. All roles keep access to the WBS browse view.
- * Items landed with their phases: review queue (Phase 8), PM roll-up
- * dashboard (Phase 10).
- */
 interface NavItem {
   href: string;
   label: string;
+  icon: "grid" | "report" | "queue" | "dashboard";
   roles?: Role[];
   active: (pathname: string) => boolean;
 }
@@ -25,27 +18,95 @@ const NAV: NavItem[] = [
   {
     href: "/",
     label: "Projects",
+    icon: "grid",
     active: (p) => p === "/" || p.startsWith("/projects"),
   },
   {
     href: "/submit",
-    label: "Submit update",
+    label: "Send Work Report",
+    icon: "report",
     roles: ["FIELD"],
     active: (p) => p === "/submit",
   },
   {
     href: "/queue",
-    label: "Review queue",
+    label: "Schedule Desk",
+    icon: "queue",
     roles: ["PLANNER", "PM"],
     active: (p) => p.startsWith("/queue"),
   },
   {
     href: "/dashboard",
-    label: "Dashboard",
+    label: "Work Progress",
+    icon: "dashboard",
     roles: ["PM"],
     active: (p) => p.startsWith("/dashboard"),
   },
 ];
+
+function Icon({ name }: { name: NavItem["icon"] }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    className: "h-4 w-4 shrink-0",
+  };
+
+  if (name === "grid") {
+    return (
+      <svg {...common}>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+    );
+  }
+
+  if (name === "report") {
+    return (
+      <svg {...common}>
+        <path d="M6 3h9l4 4v14H6z" />
+        <path d="M15 3v5h5M9 12h6M9 16h6" />
+      </svg>
+    );
+  }
+
+  if (name === "queue") {
+    return (
+      <svg {...common}>
+        <path d="M4 6h16M4 12h16M4 18h10" />
+        <circle cx="18" cy="18" r="2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...common}>
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+    </svg>
+  );
+}
+
+function SiteBridgeMark() {
+  return (
+    <svg viewBox="0 0 100 115" fill="none" className="h-6 w-6 shrink-0" aria-hidden="true">
+      <polygon points="50,2 96,28.5 96,86.5 50,113 4,86.5 4,28.5" fill="#36658a" />
+      <polygon
+        points="50,8 90,31.5 90,83.5 50,107 10,83.5 10,31.5"
+        fill="#36658a"
+        stroke="#ffffff"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      <line x1="50" y1="57.5" x2="50" y2="107" stroke="#ffffff" strokeWidth="2.5" />
+      <line x1="50" y1="57.5" x2="10" y2="34.5" stroke="#ffffff" strokeWidth="2.5" />
+      <line x1="50" y1="57.5" x2="90" y2="34.5" stroke="#ffffff" strokeWidth="2.5" />
+      <line x1="10" y1="57.5" x2="90" y2="57.5" stroke="#ffffff" strokeWidth="2.5" />
+    </svg>
+  );
+}
 
 export function Shell({
   title,
@@ -58,7 +119,7 @@ export function Shell({
 }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  // Phase 11: say out loud when the product is running on a fallback.
+  const [collapsed, setCollapsed] = useState(false);
   const [status, setStatus] = useState<SystemStatus | null>(null);
 
   useEffect(() => {
@@ -79,81 +140,129 @@ export function Shell({
     (item) => !item.roles || (user ? item.roles.includes(user.role) : false),
   );
 
-  const renderLink = (item: NavItem, extraClass: string) => {
-    const active = item.active(pathname);
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={`${extraClass} ${
-          active
-            ? "bg-white/10 font-medium text-white"
-            : "text-white/65 hover:bg-white/5 hover:text-white"
-        }`}
-      >
-        {item.label}
-      </Link>
-    );
-  };
-
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar — structure, not decoration */}
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-56 flex-col bg-ink text-white md:flex">
-        <div className="flex h-12 items-center border-b border-white/10 px-4">
-          <span className="text-[15px] font-semibold tracking-tight">SiteBridge</span>
-        </div>
-        <nav className="flex-1 space-y-0.5 p-2">
-          {visibleNav.map((item) => renderLink(item, "block rounded px-3 py-1.5 text-[13px] transition-colors"))}
-        </nav>
-        <div className="border-t border-white/10 px-4 py-3 text-[11px] text-white/40">
-          Schedule intelligence layer
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col md:pl-56">
-        {/* Top bar */}
-        <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-line bg-panel px-5">
-          <div className="flex min-w-0 items-baseline gap-3">
-            <h1 className="shrink-0 text-[15px] font-semibold text-ink">{title}</h1>
-            {subtitle ? (
-              <span className="truncate text-[12px] text-ink-3">{subtitle}</span>
-            ) : null}
-            {/* Narrow-viewport nav (sidebar is desktop-only) */}
-            <nav className="ml-2 flex gap-2 md:hidden">
-              {visibleNav.map((item) => renderLink(item, "text-[13px]"))}
-            </nav>
-          </div>
-          <div className="flex shrink-0 items-center gap-3 text-[12px]">
+    <div className="min-h-screen bg-[#eaedf1] text-slate-900">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-11 items-center justify-between border-b border-[#2d3440] bg-[#1e232a] px-4 text-slate-300">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+            Role
+          </span>
+          <span className="rounded-[2px] border border-[#3d495c] bg-[#293241] px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-slate-100">
+            {user ? ROLE_LABELS[user.role] : "—"}
+          </span>
+          <span className="text-slate-600">|</span>
+          <span className="truncate text-[11px] text-slate-400">
+            Operator: <strong className="text-slate-100">{user?.full_name ?? "—"}</strong>
             {user ? (
               <>
-                <span className="text-ink-2">{user.full_name}</span>
-                <span className="rounded border border-line-2 bg-panel-2 px-1.5 py-0.5 text-[11px] text-ink-2">
-                  {ROLE_LABELS[user.role]}
-                </span>
-                <button
-                  onClick={logout}
-                  className="text-ink-3 transition-colors hover:text-ink"
-                >
-                  Sign out
-                </button>
+                {" "}(
+                <span className="font-mono text-slate-300">{user.email}</span>)
               </>
             ) : null}
-          </div>
-        </header>
+          </span>
+        </div>
 
-        {/* Phase 11: degraded mode is stated, never silent (label + colour). */}
-        {status && status.degraded.length > 0 ? (
-          <div
-            role="status"
-            className="border-b border-amber/30 bg-amber-bg px-5 py-2 text-[12px] leading-5 text-amber"
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="hidden font-mono text-[10px] text-slate-500 sm:inline">
+            AREA: <strong className="text-slate-300">SITE CONTROL</strong>
+          </span>
+          <button
+            onClick={logout}
+            className="rounded-[2px] border border-[#444e5f] bg-[#2d333f] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300 transition-colors hover:bg-[#394150] hover:text-white"
           >
-            <span className="font-medium">Running with fallbacks:</span>{" "}
-            {status.degraded.join("  ·  ")}
+            Disconnect
+          </button>
+        </div>
+      </header>
+
+      <aside
+        className={`fixed bottom-0 left-0 top-11 z-20 hidden flex-col border-r border-[#2d3440] bg-[#1a1d24] text-slate-300 transition-[width] duration-150 md:flex ${collapsed ? "w-14" : "w-56"}`}
+      >
+        <div className="flex items-center justify-between border-b border-[#2d3440] bg-[#15171d] px-2.5 py-2.5">
+          {!collapsed ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <SiteBridgeMark />
+              <div className="truncate">
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-200">
+                  Site Bridge
+                </div>
+                <div className="font-mono text-[8px] uppercase tracking-widest text-slate-500">
+                  Engineering Controls
+                </div>
+              </div>
+            </div>
+          ) : (
+            <SiteBridgeMark />
+          )}
+          <button
+            onClick={() => setCollapsed((value) => !value)}
+            title={collapsed ? "Expand navigation" : "Collapse navigation"}
+            className="rounded-[2px] p-1 text-slate-500 transition-colors hover:bg-[#252a33] hover:text-white"
+          >
+            {collapsed ? "»" : "«"}
+          </button>
+        </div>
+
+        <nav className="flex-1 space-y-1 p-2">
+          {visibleNav.map((item) => {
+            const active = item.active(pathname);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={collapsed ? item.label : undefined}
+                className={`flex items-center rounded-[2px] border px-2 py-2 text-[11px] font-medium transition-colors ${
+                  active
+                    ? "border-[#384353] bg-[#252a33] text-slate-100"
+                    : "border-transparent text-slate-400 hover:border-[#303845] hover:bg-[#20252e] hover:text-slate-200"
+                } ${collapsed ? "justify-center" : "gap-2"}`}
+              >
+                <Icon name={item.icon} />
+                {!collapsed ? <span className="truncate">{item.label}</span> : null}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {!collapsed ? (
+          <div className="border-t border-[#2d3440] bg-[#15171d] p-2.5">
+            <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500">
+              Login Status
+            </div>
+            <div className="mt-1 truncate text-[11px] font-semibold text-slate-200">
+              {user?.full_name ?? "—"}
+            </div>
+            <div className="truncate font-mono text-[9px] text-slate-500">
+              {user?.email ?? "—"}
+            </div>
+            <div className="mt-1 inline-block rounded-[2px] border border-[#37404f] bg-[#232933] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-slate-300">
+              {user ? ROLE_LABELS[user.role] : "—"}
+            </div>
           </div>
         ) : null}
+      </aside>
 
-        <main className="flex-1 p-5">{children}</main>
+      <div className={`min-h-screen pt-11 ${collapsed ? "md:pl-14" : "md:pl-56"}`}>
+        <section className="border-b border-[#cfd5de] bg-white px-4 py-2.5 shadow-sm">
+          <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h1 className="truncate text-[12px] font-bold uppercase tracking-[0.08em] text-slate-900">
+                {title}
+              </h1>
+              {subtitle ? (
+                <p className="mt-0.5 truncate text-[10px] text-slate-500">{subtitle}</p>
+              ) : null}
+            </div>
+            {status?.degraded.length ? (
+              <div className="rounded-[2px] border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] text-amber-800">
+                <span className="font-bold uppercase">Fallback:</span>{" "}
+                {status.degraded.join(" · ")}
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <main className="p-3 sm:p-4">{children}</main>
       </div>
     </div>
   );
