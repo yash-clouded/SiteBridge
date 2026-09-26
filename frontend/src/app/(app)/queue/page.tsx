@@ -308,7 +308,7 @@ export default function QueuePage() {
   const loading = loadedFilter !== filter;
 
   return (
-    <Shell title="Review queue" subtitle="Approve field evidence against the schedule">
+    <Shell title="Schedule desk" subtitle="Review field evidence against the master schedule">
       <div className="mx-auto max-w-6xl space-y-4">
         {/* Summary + filters */}
         <div className="flex flex-wrap items-center gap-2">
