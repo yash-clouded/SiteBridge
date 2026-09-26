@@ -104,7 +104,7 @@ export default function DashboardPage() {
 
   if (user && user.role !== "PM") {
     return (
-      <Shell title="Roll-up dashboard">
+      <Shell title="Work progress">
         <p className="text-[13px] text-ink-2">
           The roll-up dashboard reports the whole project — it is for the PM role.
           {user.role === "PLANNER" ? " Your decisions live in the review queue." : ""}
