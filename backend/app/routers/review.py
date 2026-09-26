@@ -39,7 +39,7 @@ from ..schemas import (
     ReviewNote,
     RuleCheckOut,
 )
-from ..security import require_roles
+from ..security import roles_for
 from ..services.review import ReviewError, approve, reject, reopen
 from .matching import build_match
 
