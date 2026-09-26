@@ -246,7 +246,7 @@ export default function SubmitPage() {
 
   if (user && user.role !== "FIELD") {
     return (
-      <Shell title="Submit update">
+      <Shell title="Send work report" subtitle="Field evidence · direct to SiteBridge controls">
         <p className="text-[13px] text-ink-2">
           Submissions are made from the field — this screen is for Field Users.
         </p>
