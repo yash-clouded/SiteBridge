@@ -6,9 +6,15 @@ import { apiPostJson, AUTH_KEY, storedAuth, type Role, type TokenResponse, type 
 
 /** Human labels for the three roles (function-based, never WBS-level-based). */
 export const ROLE_LABELS: Record<Role, string> = {
-  FIELD: "Site Operatives",
+  CLIENT: "Client",
+  PROJECT_MANAGER: "Project Manager",
+  CONTRACTOR: "Contractor",
+  SITE_ENGINEER: "Site Engineer",
+  SITE_OPERATIVES: "Site Operatives",
   PLANNER: "Planner / Project Controls",
-  PM: "Project Manager",
+  DISCIPLINE_ENGINEER: "Discipline Engineer",
+  FIELD: "Site Operatives (Legacy)",
+  PM: "Project Manager (Legacy)",
 };
 
 /**
@@ -20,8 +26,14 @@ export const ROLE_LABELS: Record<Role, string> = {
  * roll-up dashboard (Phase 10) that reports what everyone decided.
  */
 const HOME_BY_ROLE: Record<Role, string> = {
-  FIELD: "/submit",
+  CLIENT: "/dashboard",
+  PROJECT_MANAGER: "/dashboard",
+  CONTRACTOR: "/",
+  SITE_ENGINEER: "/queue",
+  SITE_OPERATIVES: "/submit",
   PLANNER: "/queue",
+  DISCIPLINE_ENGINEER: "/queue",
+  FIELD: "/submit",
   PM: "/dashboard",
 };
 
