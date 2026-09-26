@@ -110,21 +110,21 @@ export function WbsBrowser({ nodes, levelNames }: { nodes: WbsNode[]; levelNames
   const rows = view === "tree" ? treeRows : tableRows;
 
   return (
-    <section className="overflow-hidden rounded-md border border-line bg-panel">
+    <section className="overflow-hidden rounded-md border border-line bg-surface">
       <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2">
-        <div className="flex overflow-hidden rounded border border-line-2 text-[13px]">
+        <div className="flex overflow-hidden rounded border border-line text-[13px]">
           <button
             onClick={() => setView("tree")}
             className={`px-3 py-1 transition-colors ${
-              view === "tree" ? "bg-accent text-white" : "bg-panel text-ink-2 hover:bg-panel-2"
+              view === "tree" ? "bg-accent text-white" : "bg-surface text-muted hover:bg-page"
             }`}
           >
             Tree
           </button>
           <button
             onClick={() => setView("table")}
-            className={`border-l border-line-2 px-3 py-1 transition-colors ${
-              view === "table" ? "bg-accent text-white" : "bg-panel text-ink-2 hover:bg-panel-2"
+            className={`border-l border-line px-3 py-1 transition-colors ${
+              view === "table" ? "bg-accent text-white" : "bg-surface text-muted hover:bg-page"
             }`}
           >
             Table
@@ -134,9 +134,9 @@ export function WbsBrowser({ nodes, levelNames }: { nodes: WbsNode[]; levelNames
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter by code, name, discipline, area, tag…"
-          className="min-w-[180px] flex-1 rounded border border-line-2 px-2.5 py-1 text-[13px] placeholder:text-ink-3 sm:w-80 sm:flex-none"
+          className="min-w-[180px] flex-1 rounded border border-line px-2.5 py-1 text-[13px] placeholder:text-muted sm:w-80 sm:flex-none"
         />
-        <span className="ml-auto text-[12px] text-ink-3">
+        <span className="ml-auto text-[12px] text-muted">
           {rows.length} of {nodes.length} nodes
         </span>
       </div>
@@ -144,7 +144,7 @@ export function WbsBrowser({ nodes, levelNames }: { nodes: WbsNode[]; levelNames
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1060px] text-[13px]">
           <thead>
-            <tr className="border-b border-line bg-panel-2 text-left text-[12px] text-ink-2">
+            <tr className="border-b border-line bg-page text-left text-[12px] text-muted">
               {COLUMNS.map((c) => {
                 const sortable =
                   view === "table" && ["code", "level", "planned_finish"].includes(c.key);
@@ -166,7 +166,7 @@ export function WbsBrowser({ nodes, levelNames }: { nodes: WbsNode[]; levelNames
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={COLUMNS.length} className="px-4 py-6 text-center text-[13px] text-ink-3">
+                <td colSpan={COLUMNS.length} className="px-4 py-6 text-center text-[13px] text-muted">
                   No nodes match “{query}”.
                 </td>
               </tr>
@@ -197,7 +197,7 @@ export function WbsBrowser({ nodes, levelNames }: { nodes: WbsNode[]; levelNames
         </table>
       </div>
 
-      <div className="border-t border-line px-4 py-2 text-[12px] text-ink-3">
+      <div className="border-t border-line px-4 py-2 text-[12px] text-muted">
         Level structure as imported:{" "}
         {levelNames.map((n, i) => `L${i + 1} ${n}`).join("  ·  ")}
       </div>
@@ -221,7 +221,7 @@ function Row({
   return (
     <tr
       className={`border-b border-line last:border-0 ${
-        node.is_leaf ? "hover:bg-panel-2" : "bg-panel-2"
+        node.is_leaf ? "hover:bg-page" : "bg-page"
       }`}
     >
       <td className="px-3 py-1.5">
@@ -230,7 +230,7 @@ function Row({
             onClick={onToggle}
             disabled={!expandable}
             className={`flex h-4 w-4 items-center justify-center rounded-sm text-[10px] ${
-              expandable ? "text-ink-2 hover:bg-line" : "text-transparent"
+              expandable ? "text-muted hover:bg-line" : "text-transparent"
             }`}
             aria-label={expanded ? "Collapse" : "Expand"}
           >
@@ -241,17 +241,17 @@ function Row({
       </td>
       <td className={`px-3 py-1.5 ${node.is_leaf ? "" : "font-medium text-ink"}`}>
         {node.name}
-        {!node.is_leaf ? <span className="ml-2 font-normal text-ink-3">{node.level_name}</span> : null}
+        {!node.is_leaf ? <span className="ml-2 font-normal text-muted">{node.level_name}</span> : null}
       </td>
-      <td className="px-3 py-1.5 text-ink-2">
-        L{node.level} <span className="text-ink-3">{node.level_name}</span>
+      <td className="px-3 py-1.5 text-muted">
+        L{node.level} <span className="text-muted">{node.level_name}</span>
       </td>
-      <td className="px-3 py-1.5 tabular-nums text-ink-2">{node.planned_start ?? "—"}</td>
-      <td className="px-3 py-1.5 tabular-nums text-ink-2">{node.planned_finish ?? "—"}</td>
-      <td className="px-3 py-1.5 text-right tabular-nums text-ink-2">{node.weight ?? "—"}</td>
-      <td className="px-3 py-1.5 text-ink-2">{node.discipline ?? "—"}</td>
-      <td className="px-3 py-1.5 text-ink-2">{node.area ?? "—"}</td>
-      <td className="px-3 py-1.5 text-ink-2">{node.equipment_tag ?? "—"}</td>
+      <td className="px-3 py-1.5 tabular-nums text-muted">{node.planned_start ?? "—"}</td>
+      <td className="px-3 py-1.5 tabular-nums text-muted">{node.planned_finish ?? "—"}</td>
+      <td className="px-3 py-1.5 text-right tabular-nums text-muted">{node.weight ?? "—"}</td>
+      <td className="px-3 py-1.5 text-muted">{node.discipline ?? "—"}</td>
+      <td className="px-3 py-1.5 text-muted">{node.area ?? "—"}</td>
+      <td className="px-3 py-1.5 text-muted">{node.equipment_tag ?? "—"}</td>
     </tr>
   );
 }

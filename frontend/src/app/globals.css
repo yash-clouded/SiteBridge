@@ -1,23 +1,57 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   ONE COLOR SYSTEM — the single source of truth.
+   Components hold no hex values; every colour on every screen comes from here.
+
+   Spec variable              theme token (utility)
+   ----------------------------------------------------------------------------
+   --bg-page                  --color-page         (bg-page)
+   --bg-surface               --color-surface      (bg-surface)
+   --bg-sidebar               --color-sidebar      (bg-sidebar)
+   --text-primary             --color-ink          (text-ink)
+   --text-inverse             --color-inverse      (text-inverse)
+   --text-muted               --color-muted        (text-muted)
+   --border                   --color-line         (border-line)
+   --accent                   --color-accent       (bg-/text-/border-accent)
+   --accent-hover             --color-accent-hover (bg-accent-hover)
+   --status-<state>-bg/text   --color-status-<state>-bg / -text
+   --banner-warning-bg/text/icon  --color-banner-warning-*
+   ========================================================================== */
 @theme {
-  /* Enterprise project-controls palette — functional, no gradients */
-  --color-surface: #f5f6f8;
-  --color-panel: #ffffff;
-  --color-panel-2: #fafbfc;
+  /* Surfaces */
+  --color-page: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-sidebar: #1c2333;
+
+  /* Text */
   --color-ink: #1c2333;
-  --color-ink-2: #5b6472;
-  --color-ink-3: #858d9b;
+  --color-inverse: #f5f6f8;
+  --color-muted: #6b7280;
+
+  /* Lines */
   --color-line: #e2e5ea;
-  --color-line-2: #d3d8e0;
+
+  /* The one interactive colour */
   --color-accent: #2c5cbd;
-  --color-accent-strong: #244ea3;
-  --color-amber: #b45309;
-  --color-amber-bg: #fdf3e3;
-  --color-green: #15803d;
-  --color-green-bg: #e7f5ec;
-  --color-red: #b91c1c;
-  --color-red-bg: #fbeaea;
+  --color-accent-hover: #244b9c;
+
+  /* Status — functional only, never decoration */
+  --color-status-pending-bg: #fdf3e1;
+  --color-status-pending: #92600b;
+  --color-status-approved-bg: #e6f4ea;
+  --color-status-approved: #1e7b34;
+  --color-status-corrected-bg: #e8eefb;
+  --color-status-corrected: #2c5cbd;
+  --color-status-rejected-bg: #fbe9e9;
+  --color-status-rejected: #b3261e;
+  --color-status-neutral-bg: #eef0f3;
+  --color-status-neutral: #4b5563;
+
+  /* System banners */
+  --color-banner-warning-bg: #fdf3e1;
+  --color-banner-warning-text: #92600b;
+  --color-banner-warning-icon: #b3760b;
 }
 
 @theme inline {
@@ -26,12 +60,18 @@
 
 html,
 body {
-  background: var(--color-surface);
+  background: var(--color-page);
   color: var(--color-ink);
 }
 
 * {
   border-color: var(--color-line);
+}
+
+/* Item 7 — one focus ring for every input, button and link */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Dense, utilitarian table defaults */

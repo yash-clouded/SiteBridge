@@ -31,17 +31,17 @@ const FILTERS: { key: Filter; label: string }[] = [
 ];
 
 const STATUS_LABELS: Record<ReviewStatus, string> = {
-  PENDING: "Pending",
-  NEEDS_MANUAL: "Needs manual",
+  PENDING: "Awaiting decision",
+  NEEDS_MANUAL: "Needs manual mapping",
   APPROVED: "Approved",
   REJECTED: "Rejected",
 };
 
 const STATUS_STYLE: Record<ReviewStatus, string> = {
-  PENDING: "border-line-2 bg-panel-2 text-ink-2",
-  NEEDS_MANUAL: "border-amber/30 bg-amber-bg text-amber",
-  APPROVED: "border-green/30 bg-green-bg text-green",
-  REJECTED: "border-red/30 bg-red-bg text-red",
+  PENDING: "border-status-pending/30 bg-status-pending-bg text-status-pending",
+  NEEDS_MANUAL: "border-status-corrected/30 bg-status-corrected-bg text-status-corrected",
+  APPROVED: "border-status-approved/30 bg-status-approved-bg text-status-approved",
+  REJECTED: "border-status-rejected/30 bg-status-rejected-bg text-status-rejected",
 };
 
 const BAND_LABELS: Record<ConfidenceBand, string> = {
@@ -51,15 +51,24 @@ const BAND_LABELS: Record<ConfidenceBand, string> = {
 };
 
 const BAND_STYLE: Record<ConfidenceBand, string> = {
-  high: "border-green/30 bg-green-bg text-green",
-  medium: "border-line-2 bg-panel-2 text-ink-2",
-  low: "border-amber/30 bg-amber-bg text-amber",
+  high: "border-status-approved/30 bg-status-approved-bg text-status-approved",
+  medium: "border-status-neutral/30 bg-status-neutral-bg text-status-neutral",
+  low: "border-status-pending/30 bg-status-pending-bg text-status-pending",
 };
 
 const RULE_STYLE: Record<RuleCheck["result"], string> = {
-  pass: "border-green/30 bg-green-bg text-green",
-  fail: "border-red/30 bg-red-bg text-red",
-  unknown: "border-line-2 bg-panel-2 text-ink-3",
+  pass: "border-status-approved/30 bg-status-approved-bg text-status-approved",
+  fail: "border-status-rejected/30 bg-status-rejected-bg text-status-rejected",
+  unknown: "border-status-neutral/30 bg-status-neutral-bg text-status-neutral",
+};
+
+/** Summary counts are statuses too — same 5 pairs, never decoration. */
+const COUNT_STYLE: Record<string, string> = {
+  pending: "border-status-pending/30 bg-status-pending-bg text-status-pending",
+  needs_manual: "border-status-corrected/30 bg-status-corrected-bg text-status-corrected",
+  approved: "border-status-approved/30 bg-status-approved-bg text-status-approved",
+  rejected: "border-status-rejected/30 bg-status-rejected-bg text-status-rejected",
+  no_event: "border-status-neutral/30 bg-status-neutral-bg text-status-neutral",
 };
 
 function preview(text: string, n = 96): string {
@@ -70,8 +79,8 @@ function preview(text: string, n = 96): string {
 function StatusBadge({ status }: { status: ReviewStatus | null }) {
   if (!status) {
     return (
-      <span className="rounded border border-line-2 bg-panel-2 px-1.5 py-0.5 text-[11px] text-ink-3">
-        No event
+      <span className="rounded border border-status-neutral/30 bg-status-neutral-bg px-1.5 py-0.5 text-[11px] text-status-neutral">
+        No event yet
       </span>
     );
   }
@@ -87,7 +96,7 @@ function StatusBadge({ status }: { status: ReviewStatus | null }) {
 function BandBadge({ band, score }: { band: ConfidenceBand | null; score: number }) {
   const percent = `${Math.round(score * 100)}%`;
   if (!band) {
-    return <span className="tabular-nums text-ink-3">{percent}</span>;
+    return <span className="tabular-nums text-muted">{percent}</span>;
   }
   return (
     <span
@@ -120,7 +129,7 @@ function RuleChips({ rules }: { rules: RuleCheck[] }) {
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-wide text-ink-3">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-muted">{label}</div>
       <div className="text-[13px] text-ink">{value ?? "—"}</div>
     </div>
   );
@@ -227,7 +236,7 @@ export default function QueuePage() {
         <button
           onClick={() => act(id, "process")}
           disabled={busy}
-          className="rounded border border-line-2 bg-panel px-2.5 py-1 text-[12px] text-ink-2 transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+          className="rounded border border-line bg-surface px-2.5 py-1 text-[12px] text-muted transition-colors hover:border-accent hover:text-accent disabled:border-line disabled:bg-line disabled:text-muted"
         >
           {busy ? "Extracting…" : "Extract & match"}
         </button>
@@ -241,7 +250,7 @@ export default function QueuePage() {
             onClick={() => act(id, "approve")}
             disabled={busy || !item.top}
             title={item.top ? `Approve ${item.top.activity.code}` : "No candidate to approve"}
-            className="rounded bg-accent px-2.5 py-1 text-[12px] font-medium text-white transition-colors hover:bg-accent-strong disabled:opacity-50"
+            className="rounded bg-accent px-2.5 py-1 text-[12px] font-medium text-white transition-colors hover:bg-accent-hover disabled:bg-line disabled:text-muted"
           >
             {busy ? "Working…" : "Approve"}
           </button>
@@ -250,13 +259,13 @@ export default function QueuePage() {
               <button
                 onClick={() => act(id, "reject")}
                 disabled={busy}
-                className="rounded border border-red/40 bg-red-bg px-2.5 py-1 text-[12px] font-medium text-red transition-colors hover:bg-red hover:text-white disabled:opacity-50"
+                className="rounded border border-status-rejected/40 bg-status-rejected-bg px-2.5 py-1 text-[12px] font-medium text-status-rejected transition-colors hover:bg-status-rejected hover:text-white disabled:border-line disabled:bg-line disabled:text-muted"
               >
                 Confirm reject
               </button>
               <button
                 onClick={() => setRejectingId(null)}
-                className="rounded border border-line-2 px-2 py-1 text-[12px] text-ink-2 hover:bg-panel-2"
+                className="rounded border border-line px-2 py-1 text-[12px] text-muted hover:bg-page"
               >
                 Cancel
               </button>
@@ -265,7 +274,7 @@ export default function QueuePage() {
             <button
               onClick={() => setRejectingId(id)}
               disabled={busy}
-              className="rounded border border-line-2 px-2.5 py-1 text-[12px] text-ink-2 transition-colors hover:border-red hover:text-red disabled:opacity-50"
+              className="rounded border border-line px-2.5 py-1 text-[12px] text-muted transition-colors hover:border-status-rejected hover:text-status-rejected disabled:border-line disabled:bg-line disabled:text-muted"
             >
               Reject
             </button>
@@ -279,7 +288,7 @@ export default function QueuePage() {
         <button
           onClick={() => act(id, "reopen")}
           disabled={busy}
-          className="rounded border border-line-2 px-2.5 py-1 text-[12px] text-ink-2 transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+          className="rounded border border-line px-2.5 py-1 text-[12px] text-muted transition-colors hover:border-accent hover:text-accent disabled:border-line disabled:bg-line disabled:text-muted"
         >
           {busy ? "Working…" : "Reopen"}
         </button>
@@ -287,7 +296,7 @@ export default function QueuePage() {
           <button
             onClick={() => act(id, "reject")}
             disabled={busy}
-            className="rounded border border-red/40 bg-red-bg px-2.5 py-1 text-[12px] font-medium text-red hover:bg-red hover:text-white disabled:opacity-50"
+            className="rounded border border-status-rejected/40 bg-status-rejected-bg px-2.5 py-1 text-[12px] font-medium text-status-rejected hover:bg-status-rejected hover:text-white disabled:border-line disabled:bg-line disabled:text-muted"
           >
             Confirm reject
           </button>
@@ -295,7 +304,7 @@ export default function QueuePage() {
           <button
             onClick={() => setRejectingId(id)}
             disabled={busy}
-            className="rounded border border-line-2 px-2.5 py-1 text-[12px] text-ink-2 transition-colors hover:border-red hover:text-red disabled:opacity-50"
+            className="rounded border border-line px-2.5 py-1 text-[12px] text-muted transition-colors hover:border-status-rejected hover:text-status-rejected disabled:border-line disabled:bg-line disabled:text-muted"
           >
             Reject
           </button>
@@ -315,19 +324,17 @@ export default function QueuePage() {
           <div className="flex flex-wrap gap-1.5 text-[12px]">
             {[
               { key: "pending", label: "Awaiting decision" },
-              { key: "needs_manual", label: "Needs manual" },
+              { key: "needs_manual", label: "Needs manual mapping" },
               { key: "approved", label: "Approved" },
               { key: "rejected", label: "Rejected" },
               { key: "no_event", label: "No event yet" },
             ].map((c) => (
               <span
                 key={c.key}
-                className="rounded border border-line-2 bg-panel px-2 py-1 text-ink-2"
+                className={`rounded border px-2 py-1 ${COUNT_STYLE[c.key]}`}
               >
                 {c.label}{" "}
-                <span className="font-medium tabular-nums text-ink">
-                  {counts[c.key] ?? 0}
-                </span>
+                <span className="font-medium tabular-nums">{counts[c.key] ?? 0}</span>
               </span>
             ))}
           </div>
@@ -340,7 +347,7 @@ export default function QueuePage() {
                 className={`rounded px-2.5 py-1 text-[12px] transition-colors ${
                   filter === f.key
                     ? "bg-accent text-white"
-                    : "border border-line-2 bg-panel text-ink-2 hover:bg-panel-2"
+                    : "border border-line bg-surface text-muted hover:bg-page"
                 }`}
               >
                 {f.label}
@@ -350,24 +357,24 @@ export default function QueuePage() {
         </div>
 
         {error ? (
-          <p className="rounded border border-red/30 bg-red-bg px-3 py-2 text-[13px] text-red">
+          <p className="rounded border border-status-rejected/30 bg-status-rejected-bg px-3 py-2 text-[13px] text-status-rejected">
             {error}
           </p>
         ) : null}
         {notice ? (
-          <p role="status" className="rounded border border-green/30 bg-green-bg px-3 py-2 text-[13px] text-green">
+          <p role="status" className="rounded border border-status-approved/30 bg-status-approved-bg px-3 py-2 text-[13px] text-status-approved">
             {notice}
           </p>
         ) : null}
 
-        <section className="overflow-hidden rounded-md border border-line bg-panel">
+        <section className="overflow-hidden rounded-md border border-line bg-surface">
           <div className="border-b border-line px-4 py-2.5 text-[13px] font-medium">
             Reports
           </div>
           {!queue || loading ? (
-            <p className="px-4 py-3 text-[13px] text-ink-3">Loading…</p>
+            <p className="px-4 py-3 text-[13px] text-muted">Loading…</p>
           ) : queue.items.length === 0 ? (
-            <p className="px-4 py-3 text-[13px] text-ink-3">
+            <p className="rounded border border-banner-warning-icon/30 bg-banner-warning-bg px-4 py-3 text-[13px] text-banner-warning-text">
               Nothing in this view. Field submissions appear here as soon as they are
               extracted — or{" "}
               <Link href="/" className="text-accent underline-offset-2 hover:underline">
@@ -379,7 +386,7 @@ export default function QueuePage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-[13px]">
                 <thead>
-                  <tr className="border-b border-line bg-panel-2 text-left text-[12px] text-ink-2">
+                  <tr className="border-b border-line bg-page text-left text-[12px] text-muted">
                     <th className="px-4 py-2 font-medium">Received</th>
                     <th className="px-3 py-2 font-medium">Report</th>
                     <th className="px-3 py-2 font-medium">Top candidate</th>
@@ -397,12 +404,12 @@ export default function QueuePage() {
                     return (
                       <Fragment key={id}>
                         <tr className="border-b border-line align-top">
-                          <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-ink-2">
+                          <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-muted">
                             {new Date(item.report.created_at).toLocaleString()}
                           </td>
                           <td className="max-w-[300px] px-3 py-2.5">
                             <div className="truncate text-ink">{preview(item.report.raw_text)}</div>
-                            <div className="mt-0.5 text-[11px] text-ink-3">
+                            <div className="mt-0.5 text-[11px] text-muted">
                               {item.report.source_type} · report #{id}
                             </div>
                           </td>
@@ -413,7 +420,7 @@ export default function QueuePage() {
                                   <span className="font-medium">{item.top.activity.code}</span>{" "}
                                   {item.top.activity.name}
                                 </div>
-                                <div className="mt-0.5 text-[11px] text-ink-3">
+                                <div className="mt-0.5 text-[11px] text-muted">
                                   {item.top.activity.area ?? "—"} ·{" "}
                                   {item.top.activity.discipline ?? "—"}
                                   {item.candidate_count > 1
@@ -422,14 +429,14 @@ export default function QueuePage() {
                                 </div>
                               </>
                             ) : (
-                              <span className="text-ink-3">—</span>
+                              <span className="text-muted">—</span>
                             )}
                           </td>
                           <td className="px-3 py-2.5">
                             {item.top ? (
                               <BandBadge band={item.top.confidence_band} score={item.top.score} />
                             ) : (
-                              <span className="text-ink-3">—</span>
+                              <span className="text-muted">—</span>
                             )}
                           </td>
                           <td className="px-3 py-2.5">
@@ -444,19 +451,19 @@ export default function QueuePage() {
                               onClick={() => toggleDetail(id)}
                               aria-expanded={expanded}
                               aria-label={expanded ? `Hide report ${id}` : `Open report ${id}`}
-                              className="rounded border border-line-2 px-2 py-1 text-[12px] text-ink-2 transition-colors hover:border-accent hover:text-accent"
+                              className="rounded border border-line px-2 py-1 text-[12px] text-muted transition-colors hover:border-accent hover:text-accent"
                             >
                               {expanded ? "Hide" : "Open"}
                             </button>
                           </td>
                         </tr>
                         {expanded ? (
-                          <tr className="border-b border-line bg-panel-2">
+                          <tr className="border-b border-line bg-page">
                             <td colSpan={8} className="px-4 py-3">
                               {detailError ? (
-                                <p className="text-[13px] text-red">{detailError}</p>
+                                <p className="text-[13px] text-status-rejected">{detailError}</p>
                               ) : !detail ? (
-                                <p className="text-[13px] text-ink-3">Loading match…</p>
+                                <p className="text-[13px] text-muted">Loading match…</p>
                               ) : (
                                 <DetailPanel
                                   detail={detail}
@@ -503,14 +510,14 @@ function DetailPanel({
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
-          <div className="text-[12px] font-medium text-ink-2">Extracted event</div>
+          <div className="text-[12px] font-medium text-muted">Extracted event</div>
           {event ? (
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
               <Field
                 label="Extracted by"
                 value={
                   event.model?.startsWith("heuristic")
-                    ? "Pattern match (no LLM)"
+                    ? "Pattern (no LLM)"
                     : (event.model ?? null)
                 }
               />
@@ -525,30 +532,30 @@ function DetailPanel({
               <Field label="Reviewed by" value={event.review_note ?? null} />
             </div>
           ) : (
-            <p className="text-[13px] text-ink-3">
+            <p className="text-[13px] text-muted">
               {detail.extraction_error ?? "No execution event — run extraction first."}
             </p>
           )}
         </div>
         <div className="space-y-2">
-          <div className="text-[12px] font-medium text-ink-2">
+          <div className="text-[12px] font-medium text-muted">
             {translated ? "Input (translated)" : "Raw evidence"}
           </div>
           {translated ? (
             <div className="space-y-1.5">
-              <p className="whitespace-pre-wrap rounded border border-line-2 bg-panel-2 px-2.5 py-2 text-[13px] leading-5 text-ink">
+              <p className="whitespace-pre-wrap rounded border border-line bg-page px-2.5 py-2 text-[13px] leading-5 text-ink">
                 {report.translated_text}
               </p>
-              <p className="text-[11px] text-ink-3">
+              <p className="text-[11px] text-muted">
                 Translated from {report.language_code} — extraction read this text. The
                 submission below is kept verbatim as evidence.
               </p>
             </div>
           ) : null}
-          <p className="whitespace-pre-wrap rounded border border-line bg-panel px-2.5 py-2 text-[13px] leading-5 text-ink-2">
+          <p className="whitespace-pre-wrap rounded border border-line bg-surface px-2.5 py-2 text-[13px] leading-5 text-ink">
             {report.raw_text}
           </p>
-          <p className="text-[11px] text-ink-3">
+          <p className="text-[11px] text-muted">
             report #{report.id} · {report.source_type} ·{" "}
             {report.extraction_status === "extracted"
               ? "extracted"
@@ -558,14 +565,14 @@ function DetailPanel({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded border border-line bg-panel">
+      <div className="overflow-hidden rounded border border-line bg-surface">
         <div className="flex items-center justify-between border-b border-line px-3 py-2 text-[12px] font-medium">
           <span>Candidates, ranked by final confidence</span>
           {event?.review_status === "APPROVED" && canDecide ? (
             <button
               onClick={onReopen}
               disabled={busy}
-              className="rounded border border-line-2 px-2 py-1 text-[12px] text-ink-2 hover:border-accent hover:text-accent disabled:opacity-50"
+              className="rounded border border-line px-2 py-1 text-[12px] text-muted hover:border-accent hover:text-accent disabled:border-line disabled:bg-line disabled:text-muted"
             >
               Reopen
             </button>
@@ -574,7 +581,7 @@ function DetailPanel({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-[13px]">
             <thead>
-              <tr className="border-b border-line bg-panel-2 text-left text-[11px] text-ink-2">
+              <tr className="border-b border-line bg-page text-left text-[11px] text-muted">
                 <th className="px-3 py-1.5 font-medium">#</th>
                 <th className="px-3 py-1.5 font-medium">Activity</th>
                 <th className="px-3 py-1.5 font-medium">Confidence</th>
@@ -587,13 +594,13 @@ function DetailPanel({
               {candidates.map((c: Candidate) => (
                 <tr
                   key={c.id}
-                  className={`border-b border-line last:border-0 ${c.approved ? "bg-green-bg/40" : ""}`}
+                  className={`border-b border-line last:border-0 ${c.approved ? "bg-status-approved-bg/40" : ""}`}
                 >
-                  <td className="px-3 py-2 tabular-nums text-ink-2">{c.rank}</td>
+                  <td className="px-3 py-2 tabular-nums text-muted">{c.rank}</td>
                   <td className="px-3 py-2">
                     <span className="font-medium">{c.activity.code}</span>{" "}
                     {c.activity.name}
-                    <span className="ml-2 text-[11px] text-ink-3">
+                    <span className="ml-2 text-[11px] text-muted">
                       {c.activity.area ?? "—"} · {c.activity.discipline ?? "—"}
                     </span>
                   </td>
@@ -602,11 +609,11 @@ function DetailPanel({
                   </td>
                   <td className="px-3 py-2">
                     <RuleChips rules={c.rules} />
-                    <span className="mt-1 block text-[11px] text-ink-3">
+                    <span className="mt-1 block text-[11px] text-muted">
                       {c.rules.filter(decidable).length} of {c.rules.length} rules decidable
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-[12px] text-ink-2">
+                  <td className="px-3 py-2 text-[12px] text-muted">
                     {c.activity.actual_report_id != null
                       ? `${c.activity.actual_status ?? "reported"}${
                           c.activity.actual_progress != null
@@ -617,14 +624,14 @@ function DetailPanel({
                   </td>
                   <td className="px-3 py-2 text-right">
                     {c.approved ? (
-                      <span className="rounded border border-green/30 bg-green-bg px-2 py-1 text-[11px] text-green">
+                      <span className="rounded border border-status-approved/30 bg-status-approved-bg px-2 py-1 text-[11px] text-status-approved">
                         Approved choice
                       </span>
                     ) : canDecide && detail.event?.review_status !== "REJECTED" ? (
                       <button
                         onClick={() => onApprove(c.id)}
                         disabled={busy}
-                        className="rounded border border-line-2 px-2.5 py-1 text-[12px] text-ink-2 transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+                        className="rounded border border-line px-2.5 py-1 text-[12px] text-muted transition-colors hover:border-accent hover:text-accent disabled:border-line disabled:bg-line disabled:text-muted"
                       >
                         Choose this
                       </button>

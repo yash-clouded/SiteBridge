@@ -14,7 +14,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://sitebridge:sitebridge@localhost:5432/sitebridge"
 
     # CORS for the Next.js dev server
-    frontend_origin: str = "http://localhost:3000"
+    # Allowed browser origin(s), comma-separated. Local dev: the Next.js app
+    # (3000) and the static HTML portal (8080); production: the Vercel domain.
+    frontend_origin: str = "http://localhost:3000,http://localhost:8080,http://127.0.0.1:8080"
 
     # JWT auth (Phase 2) — role travels as a token claim
     jwt_secret: str = "dev-only-change-me-replace-in-prod-0123456789"
