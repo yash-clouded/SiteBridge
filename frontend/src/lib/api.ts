@@ -4,7 +4,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export const AUTH_KEY = "sitebridge_auth";
 
-export type Role = "FIELD" | "PLANNER" | "PM";
+export type Role =
+  | "CLIENT"
+  | "PROJECT_MANAGER"
+  | "CONTRACTOR"
+  | "SITE_ENGINEER"
+  | "SITE_OPERATIVES"
+  | "PLANNER"
+  | "DISCIPLINE_ENGINEER"
+  | "FIELD"
+  | "PM";
 
 export interface User {
   id: number;
