@@ -143,11 +143,23 @@ class WbsNode(Base):
 # ---------------------------------------------------------------------------
 
 class Role(str, enum.Enum):
-    """Who can see/do what. Unrelated to WBS levels."""
+    """Seven business roles used by the SiteBridge workstation.
 
-    FIELD = "FIELD"        # Field User (Supervisor/Contractor): submit + own history
-    PLANNER = "PLANNER"    # Planner/Project Controls: review + approve/correct/reject
-    PM = "PM"              # Project Manager/Management: read-only rollup, no approvals
+    FIELD is retained as a legacy database value so older installations remain
+    readable. New users should use SITE_OPERATIVES.
+    """
+
+    CLIENT = "CLIENT"
+    PROJECT_MANAGER = "PROJECT_MANAGER"
+    CONTRACTOR = "CONTRACTOR"
+    SITE_ENGINEER = "SITE_ENGINEER"
+    SITE_OPERATIVES = "SITE_OPERATIVES"
+    PLANNER = "PLANNER"
+    DISCIPLINE_ENGINEER = "DISCIPLINE_ENGINEER"
+
+    # Backwards compatibility with the original three-role database values.
+    FIELD = "FIELD"
+    PM = "PM"
 
 
 class User(Base):
