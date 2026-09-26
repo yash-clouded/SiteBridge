@@ -45,7 +45,7 @@ export default function ProjectsPage() {
     <Shell title="Projects">
       <div className="mx-auto max-w-6xl space-y-5">
         {/* Import panel — planner-only function (roles gate functions, not tree levels) */}
-        {user?.role === "PLANNER" ? (
+        {["PLANNER", "SITE_ENGINEER", "DISCIPLINE_ENGINEER"].includes(user?.role ?? "") ? (
         <section className="rounded-md border border-line bg-panel">
           <div className="border-b border-line px-4 py-2.5 text-[13px] font-medium">
             Import schedule
