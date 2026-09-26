@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import Project, Role
 from ..schemas import RollupOut
-from ..security import require_roles
+from ..security import roles_for
 from ..services.rollup import project_rollup
 
 router = APIRouter(prefix="/api", tags=["rollup"])
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api", tags=["rollup"])
 def get_rollup(
     project_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles(Role.PLANNER, Role.PM)),
+    user=Depends(roles_for("management")),
 ) -> RollupOut:
     project = db.get(Project, project_id)
     if project is None:
