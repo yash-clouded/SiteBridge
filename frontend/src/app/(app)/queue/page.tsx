@@ -128,7 +128,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default function QueuePage() {
   const { user } = useAuth();
-  const canDecide = user?.role === "PLANNER";
+  const canDecide = ["PLANNER", "SITE_ENGINEER", "DISCIPLINE_ENGINEER"].includes(user?.role ?? "");
 
   const [queue, setQueue] = useState<QueueOut | null>(null);
   const [filter, setFilter] = useState<Filter>("pending");
