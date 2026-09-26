@@ -86,4 +86,23 @@ def require_roles(*roles: Role) -> Callable:
     return _dep
 
 
+ROLE_GROUPS: dict[str, tuple[Role, ...]] = {
+    "submit": (Role.SITE_OPERATIVES, Role.CONTRACTOR, Role.SITE_ENGINEER, Role.DISCIPLINE_ENGINEER, Role.FIELD),
+    "review": (Role.PLANNER, Role.SITE_ENGINEER, Role.DISCIPLINE_ENGINEER),
+    "management": (Role.CLIENT, Role.PROJECT_MANAGER, Role.PM),
+    "schedule_admin": (Role.PLANNER,),
+    "read_all": (
+        Role.CLIENT, Role.PROJECT_MANAGER, Role.CONTRACTOR,
+        Role.SITE_ENGINEER, Role.SITE_OPERATIVES,
+        Role.PLANNER, Role.DISCIPLINE_ENGINEER, Role.FIELD, Role.PM,
+    ),
+}
+
+def roles_for(group: str) -> Callable:
+    """Return a FastAPI dependency for a named business permission group."""
+    try:
+        return require_roles(*ROLE_GROUPS[group])
+    except KeyError as exc:
+        raise ValueError(f"Unknown role group: {group}") from exc
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
