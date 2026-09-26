@@ -199,7 +199,26 @@ class FieldReport(Base):
     # pending | extracted | failed | disabled
     extraction_status: Mapped[str] = mapped_column(String(16), default="pending")
     extraction_error: Mapped[Optional[str]] = mapped_column(Text)
+    # Multilingual intake: `raw_text` above stays verbatim; the English
+    # rendering (when one was produced) is stored beside it and is what
+    # extraction reads. `language_code` is the detected/declared source.
+    #   none (not attempted) | skipped (already English) | translated
+    #   | failed | disabled (no key)
+    translation_status: Mapped[str] = mapped_column(
+        String(16), default="none", server_default=text("'none'")
+    )
+    language_code: Mapped[Optional[str]] = mapped_column(String(16))
+    translated_text: Mapped[Optional[str]] = mapped_column(Text)
+    translation_error: Mapped[Optional[str]] = mapped_column(Text)
+    translation_model: Mapped[Optional[str]] = mapped_column(String(64))
+    translated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    @property
+    def input_text(self) -> str:
+        """What extraction reads: the English rendering when one exists,
+        otherwise the report exactly as submitted."""
+        return self.translated_text or self.raw_text
 
     user: Mapped[User] = relationship()
     event: Mapped[Optional["ExecutionEvent"]] = relationship(

@@ -8,6 +8,10 @@ service never sees audio.
 Every submission is stored verbatim in `field_reports`; downstream
 records (Phase 4+ execution events) reference it, so the whole chain
 traces back to the original raw input and its pointer.
+
+Multilingual intake: when the submitter declares a language (or we detect
+one), the English rendering is stored beside `raw_text` and it — not the
+raw text — is what extraction reads. Translation never blocks a submission.
 """
 from __future__ import annotations
 
@@ -27,6 +31,7 @@ from ..models import ExecutionEvent, FieldReport, MatchCandidate, Project, Role,
 from ..schemas import ReportListOut, ReportOut, TextReportRequest
 from ..security import get_current_user, require_roles
 from ..services.pipeline import auto_process
+from ..services.translate import translate_report
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["intake"])
@@ -69,13 +74,17 @@ def _store(
     return report
 
 
-def _finish(db: Session, report: FieldReport) -> FieldReport:
-    """After the raw evidence is committed, kick off Phases 4-6.
+def _finish(db: Session, report: FieldReport, language: str | None = None) -> FieldReport:
+    """After the raw evidence is committed: translate (if configured), then
+    kick off Phases 4-6.
 
     The submission itself must never fail because the AI layer is
-    unavailable: `auto_process` swallows those errors and only records
-    them on the report.
+    unavailable: `translate_report` and `auto_process` both swallow their
+    errors and only record them on the report.
     """
+    # Multilingual intake: English text for the pipeline, raw text untouched.
+    translate_report(db, report, language=language)
+    db.refresh(report)
     if settings.auto_extract_on_intake:
         auto_process(db, report)
         db.refresh(report)
@@ -109,6 +118,7 @@ def submit_text_report(
             filename=None,
             pointer=payload.pointer or {},
         ),
+        language=payload.language,
     )
 
 

@@ -79,6 +79,9 @@ class TextReportRequest(BaseModel):
     source_type: str = "text"
     # Evidence pointer for non-file sources, e.g. {"timestamp": "..."}
     pointer: dict[str, Any] = Field(default_factory=dict)
+    # Source language: BCP-47-ish code ("ta-IN", "hi-IN", ...) or "auto"
+    # (null = auto). Declared here so the translator is not asked to guess.
+    language: Optional[str] = None
 
 
 class ReportOut(BaseModel):
@@ -93,6 +96,14 @@ class ReportOut(BaseModel):
     pointer: dict[str, Any]
     extraction_status: str = "pending"  # pending | extracted | failed | disabled
     extraction_error: Optional[str] = None
+    # Multilingual intake: raw_text is verbatim; this is the English
+    # rendering extraction read when one was produced.
+    # none | skipped | translated | failed | disabled
+    translation_status: str = "none"
+    language_code: Optional[str] = None
+    translated_text: Optional[str] = None
+    translation_error: Optional[str] = None
+    translation_model: Optional[str] = None  # "sarvam-translate:v1"
     created_at: datetime
 
 

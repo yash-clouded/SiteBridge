@@ -44,6 +44,74 @@ const OUTCOME_STYLE: Record<string, string> = {
   REJECTED: "text-red",
 };
 
+/** Sarvam translate languages (23) — "auto" runs /text-lid detection first. */
+const LANGUAGES: { value: string; label: string }[] = [
+  { value: "auto", label: "Auto-detect" },
+  { value: "hi-IN", label: "Hindi" },
+  { value: "bn-IN", label: "Bengali" },
+  { value: "ta-IN", label: "Tamil" },
+  { value: "te-IN", label: "Telugu" },
+  { value: "mr-IN", label: "Marathi" },
+  { value: "gu-IN", label: "Gujarati" },
+  { value: "kn-IN", label: "Kannada" },
+  { value: "ml-IN", label: "Malayalam" },
+  { value: "pa-IN", label: "Punjabi" },
+  { value: "od-IN", label: "Odia" },
+  { value: "ur-IN", label: "Urdu" },
+  { value: "as-IN", label: "Assamese" },
+  { value: "ne-IN", label: "Nepali" },
+  { value: "mai-IN", label: "Maithili" },
+  { value: "kok-IN", label: "Konkani" },
+  { value: "sd-IN", label: "Sindhi" },
+  { value: "sa-IN", label: "Sanskrit" },
+  { value: "sat-IN", label: "Santali" },
+  { value: "ks-IN", label: "Kashmiri" },
+  { value: "brx-IN", label: "Bodo" },
+  { value: "doi-IN", label: "Dogri" },
+  { value: "mni-IN", label: "Manipuri" },
+  { value: "en-IN", label: "English" },
+];
+
+function langShort(code: string | null): string {
+  return code ? code.split("-")[0] : "—";
+}
+
+/** Translation outcome as a label — never colour alone (Phase 7 discipline). */
+function translationChip(r: ReportListItem): {
+  text: string;
+  className: string;
+  title?: string;
+} {
+  switch (r.translation_status) {
+    case "translated":
+      return {
+        text: `${langShort(r.language_code)} → en`,
+        className: "text-accent",
+        title: `Translated by ${r.translation_model ?? "Sarvam"} before extraction`,
+      };
+    case "skipped":
+      return {
+        text: `${langShort(r.language_code)} · English`,
+        className: "text-ink-3",
+        title: "Already English — nothing to translate",
+      };
+    case "failed":
+      return {
+        text: "Translation failed",
+        className: "text-amber",
+        title: r.translation_error ?? "Extracted from the text as submitted",
+      };
+    case "disabled":
+      return {
+        text: "—",
+        className: "text-ink-3",
+        title: "Translation is not configured (SARVAM_API_KEY unset)",
+      };
+    default:
+      return { text: "—", className: "text-ink-3" };
+  }
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   text: "Typed note",
   voice: "Voice transcript",
@@ -96,6 +164,7 @@ export default function SubmitPage() {
 
   const [mode, setMode] = useState<Mode>("text");
   const [source, setSource] = useState<TextSource>("text");
+  const [language, setLanguage] = useState<string>("auto");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -145,6 +214,7 @@ export default function SubmitPage() {
         raw_text: text,
         source_type: source,
         pointer,
+        language,
       });
       record(report);
       setText("");
@@ -227,17 +297,36 @@ export default function SubmitPage() {
 
           {mode === "text" ? (
             <form onSubmit={submitText} className="px-4 py-3">
-              <div className="mb-2 flex items-center gap-2 text-[12px] text-ink-2">
-                Source
-                <select
-                  value={source}
-                  onChange={(e) => setSource(e.target.value as TextSource)}
-                  className="rounded border border-line-2 bg-panel px-2 py-1 text-[13px] text-ink"
-                >
-                  <option value="text">Typed note</option>
-                  <option value="voice">Voice transcript (transcribed upstream)</option>
-                  <option value="dpr">DPR note</option>
-                </select>
+              <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-ink-2">
+                <label className="flex items-center gap-2">
+                  Source
+                  <select
+                    value={source}
+                    onChange={(e) => setSource(e.target.value as TextSource)}
+                    className="rounded border border-line-2 bg-panel px-2 py-1 text-[13px] text-ink"
+                  >
+                    <option value="text">Typed note</option>
+                    <option value="voice">Voice transcript (transcribed upstream)</option>
+                    <option value="dpr">DPR note</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2">
+                  Language
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="rounded border border-line-2 bg-panel px-2 py-1 text-[13px] text-ink"
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option key={l.value} value={l.value}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="text-ink-3">
+                  Non-English text is translated to English before extraction.
+                </span>
               </div>
               <textarea
                 value={text}
@@ -294,13 +383,14 @@ export default function SubmitPage() {
             <p className="px-4 py-3 text-[13px] text-ink-3">No submissions yet.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px] text-[13px]">
+              <table className="w-full min-w-[1240px] text-[13px]">
                 <thead>
                   <tr className="border-b border-line bg-panel-2 text-left text-[12px] text-ink-2">
                     <th className="px-4 py-2 font-medium">Time</th>
                     <th className="px-3 py-2 font-medium">Source</th>
                     <th className="px-3 py-2 font-medium">Evidence</th>
                     <th className="px-3 py-2 font-medium">Preview</th>
+                    <th className="px-3 py-2 font-medium">Language</th>
                     <th className="px-3 py-2 font-medium">Extraction</th>
                     <th className="px-4 py-2 font-medium">Outcome</th>
                   </tr>
@@ -326,6 +416,14 @@ export default function SubmitPage() {
                       </td>
                       <td className="max-w-[380px] truncate px-3 py-2 text-ink-2">
                         {preview(r.raw_text)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        <span
+                          className={translationChip(r).className}
+                          title={translationChip(r).title}
+                        >
+                          {translationChip(r).text}
+                        </span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-2">
                         <span className={extractionLabel(r).className}>

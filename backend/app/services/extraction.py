@@ -14,6 +14,8 @@ Contract:
     substituted (no "today", no 0, no empty string).
   * One event per report (`field_reports.id` is unique on
     `execution_events`), so the evidence chain report -> event stays 1:1.
+  * `report.input_text` — the English rendering of a translated report,
+    else the verbatim submission. `raw_text` is never edited.
 """
 from __future__ import annotations
 
@@ -162,7 +164,9 @@ def extract_fields(report: FieldReport) -> dict[str, Any]:
     Raises LlmNotConfigured / LlmError / ExtractionError on failure —
     nothing is written in that case.
     """
-    raw = chat_json(SYSTEM_PROMPT, report.raw_text)
+    # `input_text` is the English rendering when the report was
+    # translated, otherwise the report exactly as submitted.
+    raw = chat_json(SYSTEM_PROMPT, report.input_text)
     fields = coerce_event_fields(parse_payload(raw))
     fields["_raw"] = raw
     return fields
@@ -216,7 +220,7 @@ def extract_event(db: Session, report: FieldReport) -> ExecutionEvent:
             report.id,
             exc,
         )
-        fields = heuristic.extract(report.raw_text)
+        fields = heuristic.extract(report.input_text)
         model, prompt_version = heuristic.MODEL, heuristic.PROMPT_VERSION
         raw = heuristic.raw_response(fields)
     except ExtractionError as exc:

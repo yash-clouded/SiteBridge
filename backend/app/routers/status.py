@@ -20,6 +20,7 @@ from ..models import User
 from ..security import get_current_user
 from ..services import embeddings, llm
 from ..services.extraction import _enabled as heuristic_enabled
+from ..services.translate import configured as translation_configured
 
 router = APIRouter(prefix="/api", tags=["status"])
 
@@ -47,10 +48,18 @@ class ExtractionStatus(BaseModel):
     auto_on_intake: bool
 
 
+class TranslationStatus(BaseModel):
+    on_intake: bool  # is translation attempted for every submission?
+    configured: bool  # SARVAM_API_KEY present (never the key itself)
+    model: str
+    target_language: str
+
+
 class SystemStatus(BaseModel):
     llm: LlmStatus
     embeddings: EmbeddingStatus
     extraction: ExtractionStatus
+    translation: TranslationStatus
     database: bool
     degraded: list[str] = []
 
@@ -82,6 +91,12 @@ def _degraded(rungs: list[llm.Endpoint], embed_provider: str, mode: str) -> list
         notes.append(
             "Embeddings run locally (deterministic hash vectors) — retrieval works "
             "offline but is lexical, not semantic."
+        )
+    if settings.translate_on_intake and not translation_configured():
+        notes.append(
+            "Multilingual intake is on but SARVAM_API_KEY is not set — reports are "
+            "extracted in the language they were submitted (no detection or "
+            "translation)."
         )
     if len(rungs) > 1:
         notes.append(
@@ -126,6 +141,12 @@ def system_status(
             mode=mode,
             fallback=settings.extraction_fallback,
             auto_on_intake=settings.auto_extract_on_intake,
+        ),
+        translation=TranslationStatus(
+            on_intake=settings.translate_on_intake,
+            configured=translation_configured(),
+            model=settings.sarvam_translate_model,
+            target_language=settings.sarvam_target_language,
         ),
         database=database_ok,
         degraded=_degraded(rungs, embed_provider, mode),

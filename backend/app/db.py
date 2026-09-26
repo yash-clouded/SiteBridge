@@ -106,6 +106,22 @@ def _add_missing_indexes() -> None:
                 logger.info("Added index %s on %s", index.name, table.name)
 
 
+def _backfill_null_defaults() -> None:
+    """Columns added by migration land as NULL on rows that already existed.
+
+    A Python-side `default=` only applies on INSERT, so `translation_status`
+    (Phase 12) would be NULL for every report filed before it existed — and
+    `ReportOut` refuses to serve a NULL status. Backfill once, idempotently.
+    """
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE field_reports SET translation_status = 'none' "
+                "WHERE translation_status IS NULL"
+            )
+        )
+
+
 def init_db() -> None:
     """Enable pgvector, create tables, then add any columns the models gained."""
     from . import models  # noqa: F401  (populate metadata)
@@ -117,3 +133,4 @@ def init_db() -> None:
     _add_missing_columns()
     _add_missing_foreign_keys()
     _add_missing_indexes()
+    _backfill_null_defaults()

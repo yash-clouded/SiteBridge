@@ -34,12 +34,16 @@ def _offline(monkeypatch):
     `disabled` when EXTRACTION_FALLBACK=off) instead of paying for — or
     hanging on — a live call, and embeddings resolve to the local hash
     provider. Tests that exercise the transport stub `extraction.chat_json`
-    itself; tests about the ladder stub `llm._call`.
+    itself; tests about the ladder stub `llm._call`; translation tests set a
+    key and stub `translate._post` (the single HTTP seam).
     """
     monkeypatch.setattr(settings, "llm_api_key", "")
     monkeypatch.setattr(settings, "llm_base_url", "https://api.openai.com/v1")
     monkeypatch.setattr(settings, "embedding_api_key", "")
     monkeypatch.setattr(settings, "embedding_provider", "local")
+    # Translation: no key in tests, so intake records `disabled` instead of
+    # calling Sarvam. Tests about translation set a key AND stub `_post`.
+    monkeypatch.setattr(settings, "sarvam_api_key", "")
 
 
 @pytest.fixture(scope="session")

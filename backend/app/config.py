@@ -85,6 +85,22 @@ class Settings(BaseSettings):
     # are never mixed — a wrong similarity score is worse than a clear error.
     embedding_fallback_local: bool = True
 
+    # --- Multilingual intake (Sarvam) ---------------------------------------
+    # A report can arrive in any supported Indian language. The text is
+    # DETECTED and TRANSLATED to English before extraction, so the LLM prompt,
+    # the knowledge-graph rules and the review queue all read one language —
+    # while `raw_text` stays the verbatim evidence it always was.
+    # No key (or a failed call) never blocks a submission: the report is
+    # extracted as submitted and the translation is recorded as failed.
+    sarvam_api_key: str = ""
+    sarvam_base_url: str = "https://api.sarvam.ai"
+    # sarvam-translate:v1 -> all 22 scheduled languages, formal, 2000 chars
+    # mayura:v1          -> 11 languages, `auto` detection, 1000 chars
+    sarvam_translate_model: str = "sarvam-translate:v1"
+    sarvam_target_language: str = "en-IN"
+    translate_on_intake: bool = True
+    translate_timeout_seconds: float = 30.0
+
 
 @lru_cache
 def get_settings() -> Settings:

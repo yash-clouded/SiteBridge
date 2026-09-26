@@ -497,6 +497,7 @@ function DetailPanel({
 }) {
   const { event, report, candidates } = detail;
   const decidable = (r: RuleCheck) => r.result !== "unknown";
+  const translated = report.translation_status === "translated" && !!report.translated_text;
 
   return (
     <div className="space-y-3">
@@ -530,7 +531,20 @@ function DetailPanel({
           )}
         </div>
         <div className="space-y-2">
-          <div className="text-[12px] font-medium text-ink-2">Raw evidence</div>
+          <div className="text-[12px] font-medium text-ink-2">
+            {translated ? "Input (translated)" : "Raw evidence"}
+          </div>
+          {translated ? (
+            <div className="space-y-1.5">
+              <p className="whitespace-pre-wrap rounded border border-line-2 bg-panel-2 px-2.5 py-2 text-[13px] leading-5 text-ink">
+                {report.translated_text}
+              </p>
+              <p className="text-[11px] text-ink-3">
+                Translated from {report.language_code} — extraction read this text. The
+                submission below is kept verbatim as evidence.
+              </p>
+            </div>
+          ) : null}
           <p className="whitespace-pre-wrap rounded border border-line bg-panel px-2.5 py-2 text-[13px] leading-5 text-ink-2">
             {report.raw_text}
           </p>
@@ -539,6 +553,7 @@ function DetailPanel({
             {report.extraction_status === "extracted"
               ? "extracted"
               : `extraction ${report.extraction_status}`}
+            {report.translation_status === "failed" ? " · translation failed" : null}
           </p>
         </div>
       </div>

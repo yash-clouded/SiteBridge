@@ -149,6 +149,13 @@ export interface ReportOut {
   pointer: Record<string, unknown>; // evidence pointer (page/row/timestamp)
   extraction_status: string; // pending | extracted | failed | disabled
   extraction_error: string | null;
+  // Multilingual intake: raw_text is verbatim, translated_text is the
+  // English rendering extraction read (null unless a translation happened).
+  translation_status: string; // none | skipped | translated | failed | disabled
+  language_code: string | null; // detected/declared source: "hi-IN"
+  translated_text: string | null;
+  translation_error: string | null;
+  translation_model: string | null;
   created_at: string;
 }
 
@@ -330,6 +337,12 @@ export interface SystemStatus {
     mode: string; // llm | heuristic | disabled
     fallback: string;
     auto_on_intake: boolean;
+  };
+  translation: {
+    on_intake: boolean;
+    configured: boolean; // SARVAM_API_KEY present (never the key)
+    model: string;
+    target_language: string;
   };
   database: boolean;
   degraded: string[];
