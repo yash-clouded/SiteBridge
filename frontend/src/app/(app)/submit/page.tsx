@@ -244,7 +244,7 @@ export default function SubmitPage() {
     }
   }
 
-  if (user && user.role !== "FIELD") {
+  if (user && !["FIELD", "SITE_OPERATIVES", "CONTRACTOR", "SITE_ENGINEER", "DISCIPLINE_ENGINEER"].includes(user.role)) {
     return (
       <Shell title="Send work report" subtitle="Field evidence · direct to SiteBridge controls">
         <p className="text-[13px] text-ink-2">
