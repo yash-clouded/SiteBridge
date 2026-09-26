@@ -20,9 +20,14 @@ PROJECT_CODE = "NPU"
 # Phase 2 demo users — one per role (roles grant functions, never WBS levels)
 SEED_PASSWORD = "demo1234"
 SEED_USERS = [
-    ("field@sitebridge.dev", "Dana Fielder", "FIELD"),      # Field User (Supervisor/Contractor)
-    ("planner@sitebridge.dev", "Elena Voss", "PLANNER"),    # Planner / Project Controls
-    ("pm@sitebridge.dev", "Raj Mehta", "PM"),               # Project Manager / Management
+    ("client@sitebridge.dev", "Maya Sen", "CLIENT"),
+    ("pm@sitebridge.dev", "Raj Mehta", "PROJECT_MANAGER"),
+    ("contractor@sitebridge.dev", "Arjun Rao", "CONTRACTOR"),
+    ("site.engineer@sitebridge.dev", "Ramesh Sharma", "SITE_ENGINEER"),
+    ("operative@sitebridge.dev", "M. Hazarika", "SITE_OPERATIVES"),
+    ("planner@sitebridge.dev", "Elena Voss", "PLANNER"),
+    ("discipline@sitebridge.dev", "Kamal Gogoi", "DISCIPLINE_ENGINEER"),
+    ("field@sitebridge.dev", "Dana Fielder", "FIELD")
 ]
 
 
