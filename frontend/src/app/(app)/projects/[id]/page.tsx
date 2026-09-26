@@ -34,7 +34,7 @@ export default function ProjectWbsPage() {
   if (error) {
     return (
       <Shell title="Work breakdown structure">
-        <p className="text-[13px] text-red">{error}</p>
+        <p className="text-[13px] text-status-rejected">{error}</p>
       </Shell>
     );
   }
@@ -42,7 +42,7 @@ export default function ProjectWbsPage() {
   if (!project || !nodes) {
     return (
       <Shell title="Work breakdown structure">
-        <p className="text-[13px] text-ink-3">Loading…</p>
+        <p className="text-[13px] text-muted">Loading…</p>
       </Shell>
     );
   }
@@ -52,25 +52,25 @@ export default function ProjectWbsPage() {
       <div className="mx-auto max-w-7xl space-y-4">
         {/* Project meta strip — level structure is data, read from the import */}
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[13px]">
-          <span className="text-ink-2">
+          <span className="text-muted">
             <span className="font-medium text-ink">{project.level_count} levels</span>{" "}
             {project.level_names.map((n, i) => (
               <span key={n}>
-                {i > 0 ? <span className="text-ink-3"> › </span> : null}
+                {i > 0 ? <span className="text-muted"> › </span> : null}
                 {n}
               </span>
             ))}
           </span>
-          <span className="text-ink-2">
+          <span className="text-muted">
             <span className="tabular-nums font-medium text-ink">{project.node_count}</span> nodes
           </span>
-          <span className="text-ink-2">
+          <span className="text-muted">
             <span className="tabular-nums font-medium text-ink">{project.leaf_count}</span> leaf activities
           </span>
-          <span className="text-ink-2">
+          <span className="text-muted">
             weighting: <span className="text-ink">{project.weighting_field ?? "none"}</span>
           </span>
-          <span className="text-ink-3">source: {project.source_filename}</span>
+          <span className="text-muted">source: {project.source_filename}</span>
         </div>
 
         <WbsBrowser nodes={nodes} levelNames={project.level_names} />

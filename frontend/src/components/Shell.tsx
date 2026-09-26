@@ -79,18 +79,17 @@ export function Shell({
     (item) => !item.roles || (user ? item.roles.includes(user.role) : false),
   );
 
-  const renderLink = (item: NavItem, extraClass: string) => {
+  const renderLink = (item: NavItem, extraClass: string, inverse: boolean) => {
     const active = item.active(pathname);
+    const tone = inverse
+      ? active
+        ? "bg-inverse/10 font-medium text-inverse"
+        : "text-inverse/65 hover:bg-inverse/5 hover:text-inverse"
+      : active
+        ? "bg-page font-medium text-ink"
+        : "text-muted hover:bg-page hover:text-ink";
     return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={`${extraClass} ${
-          active
-            ? "bg-white/10 font-medium text-white"
-            : "text-white/65 hover:bg-white/5 hover:text-white"
-        }`}
-      >
+      <Link key={item.href} href={item.href} className={`${extraClass} ${tone}`}>
         {item.label}
       </Link>
     );
@@ -99,41 +98,43 @@ export function Shell({
   return (
     <div className="flex min-h-screen">
       {/* Sidebar — structure, not decoration */}
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-56 flex-col bg-ink text-white md:flex">
-        <div className="flex h-12 items-center border-b border-white/10 px-4">
+      <aside className="fixed inset-y-0 left-0 z-10 hidden w-56 flex-col bg-sidebar text-inverse md:flex">
+        <div className="flex h-12 items-center border-b border-inverse/10 px-4">
           <span className="text-[15px] font-semibold tracking-tight">SiteBridge</span>
         </div>
         <nav className="flex-1 space-y-0.5 p-2">
-          {visibleNav.map((item) => renderLink(item, "block rounded px-3 py-1.5 text-[13px] transition-colors"))}
+          {visibleNav.map((item) =>
+            renderLink(item, "block rounded px-3 py-1.5 text-[13px] transition-colors", true),
+          )}
         </nav>
-        <div className="border-t border-white/10 px-4 py-3 text-[11px] text-white/40">
+        <div className="border-t border-inverse/10 px-4 py-3 text-[11px] text-inverse/40">
           Schedule intelligence layer
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col md:pl-56">
         {/* Top bar */}
-        <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-line bg-panel px-5">
+        <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-line bg-surface px-5">
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 className="shrink-0 text-[15px] font-semibold text-ink">{title}</h1>
             {subtitle ? (
-              <span className="truncate text-[12px] text-ink-3">{subtitle}</span>
+              <span className="truncate text-[12px] text-muted">{subtitle}</span>
             ) : null}
             {/* Narrow-viewport nav (sidebar is desktop-only) */}
             <nav className="ml-2 flex gap-2 md:hidden">
-              {visibleNav.map((item) => renderLink(item, "text-[13px]"))}
+              {visibleNav.map((item) => renderLink(item, "text-[13px]", false))}
             </nav>
           </div>
           <div className="flex shrink-0 items-center gap-3 text-[12px]">
             {user ? (
               <>
-                <span className="text-ink-2">{user.full_name}</span>
-                <span className="rounded border border-line-2 bg-panel-2 px-1.5 py-0.5 text-[11px] text-ink-2">
+                <span className="text-muted">{user.full_name}</span>
+                <span className="rounded border border-status-neutral/30 bg-status-neutral-bg px-1.5 py-0.5 text-[11px] text-status-neutral">
                   {ROLE_LABELS[user.role]}
                 </span>
                 <button
                   onClick={logout}
-                  className="text-ink-3 transition-colors hover:text-ink"
+                  className="text-muted transition-colors hover:text-ink"
                 >
                   Sign out
                 </button>
@@ -146,9 +147,9 @@ export function Shell({
         {status && status.degraded.length > 0 ? (
           <div
             role="status"
-            className="border-b border-amber/30 bg-amber-bg px-5 py-2 text-[12px] leading-5 text-amber"
+            className="border-b border-banner-warning-icon/30 bg-banner-warning-bg px-5 py-2 text-[12px] leading-5 text-banner-warning-text"
           >
-            <span className="font-medium">Running with fallbacks:</span>{" "}
+            <span className="font-medium text-banner-warning-icon">Running with fallbacks:</span>{" "}
             {status.degraded.join("  ·  ")}
           </div>
         ) : null}

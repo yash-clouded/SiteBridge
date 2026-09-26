@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SiteBridge Engineering Controls — OIL-EXP-2026</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+            mono: ['Consolas', 'Courier New', 'monospace']
+          },
+          colors: {
+            eng: {
+              sidebar: '#181b1f',
+              panel: '#20242a',
+              header: '#2b303c',
+              border: '#363d4a',
+              accent: '#0d6efd',
+              accentHover: '#0b5ed7',
+              surface: '#f4f6f8',
+              surfaceCard: '#ffffff',
+              cardBorder: '#d0d5dd',
+              textPrimary: '#1e242c',
+              textSecondary: '#5a6270'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Deployment config (API base URL only — no secrets). See config.js -->
+  <script src="./config.js"></script>
+  <style>
+    /* Industrial low-saturation badge tokens */
+    .ibadge { display: inline-flex; align-items: center; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 2px; line-height: 1; }
+    .ibadge-pending { background-color: #fff8e6; color: #8f6000; border: 1px solid #ffe199; }
+    .ibadge-approved { background-color: #ebfaef; color: #086e24; border: 1px solid #b6ebc4; }
+    .ibadge-corrected { background-color: #eff6ff; color: #0c4a9e; border: 1px solid #bfdbfe; }
+    .ibadge-rejected { background-color: #fdf2f2; color: #9e1a1a; border: 1px solid #f8b4b4; }
+    
+    /* Strict, non-bouncy table rows */
+    .eng-table th { background: #eaedf1; color: #3b424e; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.03em; border-bottom: 1px solid #cbd2dc; }
+    .eng-table td { font-size: 12px; border-bottom: 1px solid #e5e9f0; vertical-align: middle; }
+    .eng-table tr:hover td { background-color: #f8fafc; }
+    
+    /* Native crisp progress tracking bars */
+    .prog-track { background: #e2e7ec; height: 18px; border-radius: 2px; overflow: hidden; border: 1px solid #cbd2dc; }
+    .prog-fill-blue { background: #0b5ed7; }
+    .prog-fill-amber { background: #d97706; }
+    .prog-fill-green { background: #198754; }
+  </style>
+</head>
+<body class="bg-eng-surface text-eng-textPrimary antialiased min-h-screen flex flex-col select-none">
+
+  <!-- ========================================================================= -->
+  <!-- 1. ENTRY / AUTHENTICATION PAGE                                            -->
+  <!-- ========================================================================= -->
+  <section id="auth-landing-page" class="min-h-screen w-full flex flex-col justify-between bg-[#111317] text-slate-300">
+    <header class="border-b border-[#242a33] px-6 py-3 flex items-center justify-between bg-[#181b22]">
+      <div class="flex items-center space-x-3">
+        <!-- Geometric Hexagonal SVG Logo -->
+        <svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 100 115" fill="none">
+          <polygon points="50,2 96,28.5 96,86.5 50,113 4,86.5 4,28.5" fill="#36658a"/>
+          <polygon points="50,8 90,31.5 90,83.5 50,107 10,83.5 10,31.5" fill="#36658a" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+          <line x1="50" y1="57.5" x2="50" y2="107" stroke="#ffffff" stroke-width="2.2"/>
+          <line x1="50" y1="57.5" x2="10" y2="34.5" stroke="#ffffff" stroke-width="2.2"/>
+          <line x1="50" y1="57.5" x2="90" y2="34.5" stroke="#ffffff" stroke-width="2.2"/>
+          <line x1="10" y1="57.5" x2="90" y2="57.5" stroke="#ffffff" stroke-width="2.2"/>
+          <polygon points="50,57.5 30,20 50,33 70,20" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+          <polygon points="50,57.5 35,92 50,69 65,92" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+          <line x1="50" y1="69" x2="50" y2="57.5" stroke="#ffffff" stroke-width="2.2"/>
+          <polygon points="50,57.5 18,69 35,92" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+          <polygon points="50,57.5 82,69 65,92" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+        </svg>
+        <span class="font-bold tracking-wider text-slate-100 text-sm uppercase">SITE BRIDGE</span>
+      </div>
+      <div>
+        <!-- Cleared top right corner -->
+      </div>
+    </header>
+
+    <main class="flex-1 flex items-center justify-center p-4">
+      <div class="w-full max-w-sm bg-[#1a1e26] border border-[#2d3440] rounded-[2px] shadow-lg p-6">
+        <div class="border-b border-[#2d3440] pb-3 mb-5">
+          <h1 class="text-sm font-bold text-slate-100 uppercase tracking-wide">WORKSTATION ENTRY</h1>
+          <p class="text-[11px] text-slate-400 mt-0.5">Project Asset: OIL-EXP-2026-BAY-B</p>
+        </div>
+
+        <form id="access-form" onsubmit="handleAccessSubmit(event)" class="space-y-4">
+          <div>
+            <label for="input-email" class="block text-[11px] font-semibold text-slate-300 uppercase mb-1">
+              Email
+            </label>
+            <input type="email" id="input-email" required autocomplete="username" spellcheck="false"
+              placeholder="name@sitebridge.dev" oninput="hideLoginError()"
+              class="w-full bg-[#12151a] border border-[#343b49] text-slate-200 text-xs rounded-[2px] px-2.5 py-2 focus:outline-none focus:border-[#0d6efd] placeholder-slate-600 font-mono" />
+          </div>
+
+          <div>
+            <label for="input-password" class="block text-[11px] font-semibold text-slate-300 uppercase mb-1">
+              Password
+            </label>
+            <input type="password" id="input-password" required autocomplete="current-password"
+              placeholder="••••••••" oninput="hideLoginError()"
+              class="w-full bg-[#12151a] border border-[#343b49] text-slate-200 text-xs rounded-[2px] px-2.5 py-2 focus:outline-none focus:border-[#0d6efd] placeholder-slate-600 font-mono" />
+          </div>
+
+          <div id="login-error" class="hidden text-[11px] text-red-300 bg-[#341818] border border-[#6b2a2a] p-2 rounded-[2px]">
+            Authentication rejected.
+          </div>
+
+          <button type="submit" id="btn-sign-in" class="w-full mt-2 bg-[#0d6efd] hover:bg-[#0b5ed7] text-white text-xs font-semibold uppercase tracking-wider py-2.5 rounded-[2px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+            Sign In
+          </button>
+        </form>
+
+        <div class="mt-5 border-t border-[#2d3440] pt-3">
+          <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Demo Accounts</div>
+          <div class="space-y-1 font-mono text-[10px] text-slate-500">
+            <div><span class="text-slate-400">FIELD</span> &nbsp;field@sitebridge.dev &nbsp;·&nbsp; demo1234</div>
+            <div><span class="text-slate-400">PLANNER</span> &nbsp;planner@sitebridge.dev &nbsp;·&nbsp; demo1234</div>
+            <div><span class="text-slate-400">PM</span> &nbsp;pm@sitebridge.dev &nbsp;·&nbsp; demo1234</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="border-t border-[#242a33] px-6 py-2.5 text-center text-[11px] text-slate-500 font-mono bg-[#14171d]">
+      <!-- Cleared SIH details on landing page footer -->
+    </footer>
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- 2. WORKSPACE APPLICATION SHELL                                            -->
+  <!-- ========================================================================= -->
+  <div id="main-application-shell" class="hidden flex-1 flex-col min-h-screen">
+    
+    <!-- Top System Bar -->
+    <header class="bg-[#1e232a] text-slate-300 px-4 py-1.5 flex flex-wrap items-center justify-between text-xs border-b border-[#2d3440]">
+      <div class="flex items-center space-x-3">
+        <span class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Role:</span>
+        <span id="header-authenticated-role" class="px-2 py-0.5 rounded-[2px] bg-[#293241] text-slate-100 border border-[#3d495c] font-bold uppercase text-[10px] font-mono">
+          --
+        </span>
+        <span class="text-slate-500">|</span>
+        <span class="text-slate-400 text-xs">Operator: <strong id="header-user-name" class="text-slate-100">--</strong> (<span id="header-user-id" class="text-slate-300 font-mono">--</span>)</span>
+      </div>
+      <div class="flex items-center space-x-3">
+        <!-- Quick Search Bar (Ctrl+K) -->
+        <button onclick="openCommandPalette()" class="hidden sm:flex items-center space-x-1.5 bg-[#15171d] hover:bg-[#20252e] border border-[#353d4c] px-2 py-0.5 rounded-[2px] text-slate-400 hover:text-slate-200 transition-colors font-mono text-[11px]">
+          <svg class="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Search Item / Work Area</span>
+          <kbd class="bg-[#242b36] border border-[#3f4a5c] text-[9px] px-1 rounded text-slate-300">Ctrl+K</kbd>
+        </button>
+
+        <span class="text-[11px] text-slate-400 font-mono">AREA: <strong class="text-slate-200">BAY-B EXPANSION</strong></span>
+        <button onclick="handleLogout()" class="text-[11px] bg-[#2d333f] hover:bg-[#394150] border border-[#444e5f] px-2.5 py-0.5 rounded-[2px] text-slate-300 transition-colors">
+          Disconnect
+        </button>
+      </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+      
+      <!-- COLLAPSIBLE SIDEBAR -->
+      <aside id="app-sidebar" class="w-56 transition-[width] duration-150 bg-[#1a1d24] text-slate-300 flex flex-col justify-between border-r border-[#2d3440]">
+        <div>
+          <!-- Header with Collapse Toggle Button -->
+          <div class="p-2.5 border-b border-[#2d3440] flex items-center justify-between bg-[#15171d]">
+            <div id="sidebar-logo-text" class="flex items-center space-x-2 overflow-hidden">
+              <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 100 115" fill="none">
+                <polygon points="50,2 96,28.5 96,86.5 50,113 4,86.5 4,28.5" fill="#36658a"/>
+                <polygon points="50,8 90,31.5 90,83.5 50,107 10,83.5 10,31.5" fill="#36658a" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+                <line x1="50" y1="57.5" x2="50" y2="107" stroke="#ffffff" stroke-width="2.5"/>
+                <line x1="50" y1="57.5" x2="10" y2="34.5" stroke="#ffffff" stroke-width="2.5"/>
+                <line x1="50" y1="57.5" x2="90" y2="34.5" stroke="#ffffff" stroke-width="2.5"/>
+                <line x1="10" y1="57.5" x2="90" y2="57.5" stroke="#ffffff" stroke-width="2.5"/>
+                <polygon points="50,57.5 30,20 50,33 70,20" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+                <polygon points="50,57.5 35,92 50,69 65,92" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+                <line x1="50" y1="69" x2="50" y2="57.5" stroke="#ffffff" stroke-width="2.5"/>
+                <polygon points="50,57.5 18,69 35,92" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+                <polygon points="50,57.5 82,69 65,92" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+              </svg>
+              <div class="truncate">
+                <h2 class="font-bold text-slate-200 text-xs tracking-wider uppercase">SITE BRIDGE</h2>
+              </div>
+            </div>
+            <button onclick="toggleSidebar()" id="sidebar-toggle-btn" title="Toggle Navigation Panel" class="p-1 rounded-[2px] text-slate-400 hover:text-white hover:bg-[#252a33] text-xs font-mono">
+              «
+            </button>
+          </div>
+
+          <!-- Dynamic Navigation Links -->
+          <nav class="mt-2 px-1.5 space-y-0.5" id="sidebar-nav"></nav>
+        </div>
+
+        <!-- Session Status -->
+        <div id="sidebar-user-footer" class="p-2.5 border-t border-[#2d3440] text-xs bg-[#15171d]">
+          <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider sidebar-text">Login Status</div>
+          <div class="font-semibold text-slate-200 text-xs mt-0.5 truncate sidebar-text" id="sidebar-name-display">--</div>
+          <div class="text-[10px] text-slate-400 font-mono truncate sidebar-text" id="sidebar-id-display">--</div>
+          <div class="mt-1 inline-block px-1.5 py-0.5 rounded-[2px] text-[9px] font-bold bg-[#232933] text-slate-300 border border-[#37404f] truncate sidebar-text font-mono" id="sidebar-badge-display">
+            --
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Workspace Panel -->
+      <main class="flex-1 flex flex-col overflow-y-auto bg-[#eaedf1]">
+        <div class="bg-white px-5 py-2.5 border-b border-eng-cardBorder flex items-center justify-between shadow-sm">
+          <div>
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide" id="view-title">--</h3>
+            <p class="text-[11px] text-slate-500" id="view-subtitle">--</p>
+          </div>
+          <div id="toast-container"></div>
+        </div>
+
+        <div class="p-4 flex-1">
+
+          <!-- ============================================================= -->
+          <!-- 1. CLIENT WORKSPACE (Plain Language for Non-Tech Users)       -->
+          <!-- ============================================================= -->
+          <div id="tier-client" class="hidden space-y-4">
+
+            <!-- SUBVIEW A: PROGRESS HEALTH -->
+            <div id="client-subview-health" class="space-y-4">
+              
+              <!-- Clean Safety Status + 1-Click Summary Download -->
+              <div class="bg-white p-2.5 rounded-[2px] border border-eng-cardBorder shadow-sm flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center space-x-2">
+                  <span class="text-[11px] font-bold text-slate-600">Worker Safety Record:</span>
+                  <button onclick="openHseModal()" class="ibadge ibadge-approved cursor-pointer hover:bg-[#d8f5df] text-[11px] transition-colors" title="Click to view full safety records">
+                    <svg class="w-3 h-3 mr-1 text-[#086e24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Safety Status: 100% Safe (Zero Serious Accidents Recorded) [VERIFIED]
+                  </button>
+                </div>
+                <button onclick="exportClientBrief()" class="inline-flex items-center px-2.5 py-1 bg-[#181b22] hover:bg-[#252a35] text-slate-200 text-[11px] font-medium rounded-[2px] border border-[#343b49] transition-colors">
+                  <svg class="w-3 h-3 mr-1 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download 1-Page Summary (PDF)
+                </button>
+              </div>
+
+              <!-- Top Simple Outcome Figures -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-t-2 border-t-[#3b424e]">
+                  <div class="text-[11px] font-bold text-slate-500 uppercase">Agreed Promised Finish Date</div>
+                  <div class="text-2xl font-black text-slate-900 mt-1 font-mono">15-Nov-2026</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Original contract handover date</div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-t-2 border-t-[#d97706]">
+                  <div class="text-[11px] font-bold text-amber-800 uppercase">Realistic Expected Finish Date</div>
+                  <div class="text-2xl font-black text-amber-900 mt-1 font-mono">04-Dec-2026</div>
+                  <div class="text-[11px] text-amber-800 font-semibold mt-0.5">Running 19 Days Late at current speed</div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-t-2 border-t-[#b91c1c]">
+                  <div class="text-[11px] font-bold text-red-800 uppercase">Work Left To Be Completed</div>
+                  <div class="text-2xl font-black text-red-900 mt-1 font-mono">22.3%</div>
+                  <div class="text-[11px] text-red-800 font-semibold mt-0.5">77.7% Actually Done vs 92.0% Claimed on Paper</div>
+                </div>
+              </div>
+
+              <!-- Overall Progression Bar (Plain English) -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+                <div class="flex justify-between items-center mb-1.5">
+                  <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Overall Project Work Completed</h4>
+                  <span class="text-xs font-mono font-bold text-[#0d6efd]">77.7% Actually Finished</span>
+                </div>
+                <div class="prog-track flex">
+                  <div class="prog-fill-blue text-[10px] text-white flex items-center justify-center font-bold" style="width: 77.7%">
+                    77.7% Confirmed Done on Ground
+                  </div>
+                  <div class="prog-fill-amber text-[10px] text-slate-950 flex items-center justify-center font-bold" style="width: 14.3%">
+                    14.3% Unverified Gap
+                  </div>
+                </div>
+                <div class="flex justify-between text-[11px] text-slate-500 mt-1.5 font-mono">
+                  <span>AGREED TARGET TODAY: 92.0%</span>
+                  <span class="text-amber-800 font-bold">BEHIND TARGET BY: 14.3% (~19 DAYS SLIP)</span>
+                </div>
+              </div>
+
+              <!-- Progression Bars by Area of Work -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm space-y-3">
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide border-b border-slate-200 pb-2">
+                  Progress by Type of Work
+                </h4>
+
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="font-semibold text-slate-800">Ground & Concrete Work (Foundations, Boundary Walls)</span>
+                    <span class="font-mono font-bold text-[#086e24]">88.5% Done</span>
+                  </div>
+                  <div class="w-full bg-[#e2e7ec] h-2.5 rounded-[1px] overflow-hidden border border-slate-300">
+                    <div class="bg-[#198754] h-full" style="width: 88.5%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="font-semibold text-slate-800">Pipeline & Mechanical Work (Welding, Pipe Laying, Joining)</span>
+                    <span class="font-mono font-bold text-[#0d6efd]">74.2% Done</span>
+                  </div>
+                  <div class="w-full bg-[#e2e7ec] h-2.5 rounded-[1px] overflow-hidden border border-slate-300">
+                    <div class="bg-[#0b5ed7] h-full" style="width: 74.2%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="font-semibold text-slate-800">Electrical & Power Cabling (Power Rooms, Cable Trays)</span>
+                    <span class="font-mono font-bold text-[#b45309]">62.0% Done</span>
+                  </div>
+                  <div class="w-full bg-[#e2e7ec] h-2.5 rounded-[1px] overflow-hidden border border-slate-300">
+                    <div class="bg-[#d97706] h-full" style="width: 62.0%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="font-semibold text-slate-800">Sensors & Automatic Controls (Meters, Display Panels, Checking)</span>
+                    <span class="font-mono font-bold text-slate-700">45.0% Done</span>
+                  </div>
+                  <div class="w-full bg-[#e2e7ec] h-2.5 rounded-[1px] overflow-hidden border border-slate-300">
+                    <div class="bg-[#4b5563] h-full" style="width: 45.0%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUBVIEW B: FINANCE (Plain Everyday Money Language) -->
+            <div id="client-subview-finance" class="hidden space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-t-2 border-t-[#3b424e]">
+                  <div class="text-[11px] font-bold text-slate-500 uppercase">Total Approved Project Budget</div>
+                  <div class="text-2xl font-black text-slate-900 mt-1 font-mono">₹420.00 Cr</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Total funds sanctioned for this project</div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-t-2 border-t-[#b91c1c]">
+                  <div class="text-[11px] font-bold text-red-800 uppercase">Extra Estimated Cost Due to Delay</div>
+                  <div class="text-2xl font-black text-red-900 mt-1 font-mono">+₹8.40 Cr</div>
+                  <div class="text-[11px] text-red-800 font-semibold mt-0.5">Machine rent, site stay & extra staff cost</div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-t-2 border-t-[#086e24]">
+                  <div class="text-[11px] font-bold text-[#086e24] uppercase">Money Already Paid Out</div>
+                  <div class="text-2xl font-black text-slate-900 mt-1 font-mono">₹248.50 Cr</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Paid for confirmed completed work so far</div>
+                </div>
+              </div>
+
+              <!-- Simple Money Release Schedule (Upcoming Payments) -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm space-y-3">
+                <div class="flex flex-wrap items-center justify-between border-b border-slate-200 pb-2.5 gap-2">
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Upcoming Payment Schedule & Cash Planning</h4>
+                    <p class="text-[11px] text-slate-500">How much money is planned, already paid, and expected next based on physical work speed</p>
+                  </div>
+                  <span class="ibadge ibadge-corrected font-mono">PAYMENT TIMELINE UPDATED</span>
+                </div>
+
+                <!-- Comparative Cashflow Progress Comparison Bars -->
+                <div class="space-y-2 text-xs">
+                  <div>
+                    <div class="flex justify-between text-[11px] text-slate-600 mb-0.5">
+                      <span>PLANNED BILLS BY THIS MONTH (ORIGINAL SCHEDULE)</span>
+                      <span class="font-mono font-bold">₹284.00 Cr (Target)</span>
+                    </div>
+                    <div class="w-full bg-[#e2e7ec] h-3 rounded-[1px] overflow-hidden">
+                      <div class="bg-slate-500 h-full" style="width: 67.6%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-[11px] text-slate-800 mb-0.5">
+                      <span class="font-bold">BILLS VERIFIED & ACTUALLY PAID OUT</span>
+                      <span class="font-mono font-bold text-[#086e24]">₹248.50 Cr (Paid)</span>
+                    </div>
+                    <div class="w-full bg-[#e2e7ec] h-3 rounded-[1px] overflow-hidden">
+                      <div class="bg-[#198754] h-full" style="width: 59.1%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-[11px] text-amber-800 mb-0.5">
+                      <span class="font-bold">NEXT ESTIMATED PAYMENT REQUIRED SOON</span>
+                      <span class="font-mono font-bold">₹35.50 Cr (Expected)</span>
+                    </div>
+                    <div class="w-full bg-[#e2e7ec] h-3 rounded-[1px] overflow-hidden">
+                      <div class="bg-[#d97706] h-full" style="width: 8.4%"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Dynamic Plain Language Advisory Pill -->
+                <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-[2px] flex items-center space-x-2 text-xs text-blue-900">
+                  <svg class="w-4 h-4 text-blue-700 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  <span><strong>Helpful Money Note:</strong> Because work on the ground is running 14.3% slower than planned, you do not need to release the next <strong>₹15.20 Crore</strong> payment immediately. You can safely hold it for another <strong>3 weeks (21 days)</strong> without breaking contractor agreements.</span>
+                </div>
+              </div>
+
+              <!-- Where the Money Has Been Spent (Pie Chart in Everyday Words) -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+                <div class="border-b border-slate-200 pb-2.5 mb-3 flex justify-between items-center">
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Where Project Money Has Been Spent So Far</h4>
+                    <p class="text-[11px] text-slate-500">Breakdown of the ₹248.50 Crore paid across machines, workers, materials transport, and inspections</p>
+                  </div>
+                  <span class="text-[11px] font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-[2px] border border-slate-300">
+                    TOTAL PAID: ₹248.50 Cr
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                  <div class="md:col-span-5 flex justify-center">
+                    <svg viewBox="0 0 220 220" class="w-44 h-44 transform -rotate-90">
+                      <circle cx="110" cy="110" r="80" fill="transparent" stroke="#0d6efd" stroke-width="30" stroke-dasharray="176 503" stroke-dashoffset="0" />
+                      <circle cx="110" cy="110" r="80" fill="transparent" stroke="#198754" stroke-width="30" stroke-dasharray="126 503" stroke-dashoffset="-176" />
+                      <circle cx="110" cy="110" r="80" fill="transparent" stroke="#d97706" stroke-width="30" stroke-dasharray="100 503" stroke-dashoffset="-302" />
+                      <circle cx="110" cy="110" r="80" fill="transparent" stroke="#6f42c1" stroke-width="30" stroke-dasharray="60 503" stroke-dashoffset="-402" />
+                      <circle cx="110" cy="110" r="80" fill="transparent" stroke="#6c757d" stroke-width="30" stroke-dasharray="40 503" stroke-dashoffset="-462" />
+                    </svg>
+                  </div>
+
+                  <div class="md:col-span-7 space-y-1.5 text-xs">
+                    <div class="flex items-center justify-between p-1.5 rounded-[2px] bg-slate-50 border border-slate-200">
+                      <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-[1px] bg-[#0d6efd] inline-block"></span>
+                        <span class="font-semibold text-slate-800">Heavy Cranes, Vehicles & Machines</span>
+                      </div>
+                      <span class="font-mono font-bold text-slate-900">₹87.00 Cr (35%)</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-1.5 rounded-[2px] bg-slate-50 border border-slate-200">
+                      <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-[1px] bg-[#198754] inline-block"></span>
+                        <span class="font-semibold text-slate-800">Worker Wages & Engineer Salaries</span>
+                      </div>
+                      <span class="font-mono font-bold text-slate-900">₹62.10 Cr (25%)</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-1.5 rounded-[2px] bg-slate-50 border border-slate-200">
+                      <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-[1px] bg-[#d97706] inline-block"></span>
+                        <span class="font-semibold text-slate-800">Transporting Pipes & Materials to Site</span>
+                      </div>
+                      <span class="font-mono font-bold text-slate-900">₹49.70 Cr (20%)</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-1.5 rounded-[2px] bg-slate-50 border border-slate-200">
+                      <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-[1px] bg-[#6f42c1] inline-block"></span>
+                        <span class="font-semibold text-slate-800">Quality Checks, Weld Tests & Inspection Reports</span>
+                      </div>
+                      <span class="font-mono font-bold text-slate-900">₹29.80 Cr (12%)</span>
+                    </div>
+
+                    <div class="flex items-center justify-between p-1.5 rounded-[2px] bg-slate-50 border border-slate-200">
+                      <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-[1px] bg-[#6c757d] inline-block"></span>
+                        <span class="font-semibold text-slate-800">Site Facilities, Electricity & Emergency Fund</span>
+                      </div>
+                      <span class="font-mono font-bold text-slate-900">₹19.90 Cr (8%)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUBVIEW C: CONTACTS (Kept Intact) -->
+            <div id="client-subview-contacts" class="hidden space-y-4">
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+                <div class="border-b border-slate-200 pb-2.5 mb-3">
+                  <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Contractor & Company Contact Directory</h4>
+                  <p class="text-[11px] text-slate-500">Contact persons in charge of each work package</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left eng-table border-collapse">
+                    <thead>
+                      <tr>
+                        <th class="py-2 px-2.5">Company Name</th>
+                        <th class="py-2 px-2.5">Work Assigned</th>
+                        <th class="py-2 px-2.5">Person in Charge</th>
+                        <th class="py-2 px-2.5">Phone Number</th>
+                        <th class="py-2 px-2.5">Email Address</th>
+                        <th class="py-2 px-2.5">Site Office Room</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      <tr>
+                        <td class="py-2 px-2.5 font-bold text-slate-900">Apex Infra Projects Ltd</td>
+                        <td class="py-2 px-2.5"><span class="ibadge ibadge-approved">Civil & Ground Work</span></td>
+                        <td class="py-2 px-2.5">S. K. Patnaik</td>
+                        <td class="py-2 px-2.5 font-mono text-[#0d6efd]">+91 98301 44210</td>
+                        <td class="py-2 px-2.5 font-mono text-slate-600">patnaik@apexinfra.co.in</td>
+                        <td class="py-2 px-2.5 text-slate-500">Cabin C-04, Gate 1</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 px-2.5 font-bold text-slate-900">Bridge & Piping Tech EPC</td>
+                        <td class="py-2 px-2.5"><span class="ibadge ibadge-corrected">Pipeline Laying</span></td>
+                        <td class="py-2 px-2.5">Harish Rawat</td>
+                        <td class="py-2 px-2.5 font-mono text-[#0d6efd]">+91 94350 21980</td>
+                        <td class="py-2 px-2.5 font-mono text-slate-600">h.rawat@bptechepc.com</td>
+                        <td class="py-2 px-2.5 text-slate-500">Bay B Trestle Office</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 px-2.5 font-bold text-slate-900">PowerGrid Solutions</td>
+                        <td class="py-2 px-2.5"><span class="ibadge ibadge-pending">Electrical & Wiring</span></td>
+                        <td class="py-2 px-2.5">Alok Sengupta</td>
+                        <td class="py-2 px-2.5 font-mono text-[#0d6efd]">+91 98640 11722</td>
+                        <td class="py-2 px-2.5 font-mono text-slate-600">asengupta@powergridsol.in</td>
+                        <td class="py-2 px-2.5 text-slate-500">Substation 02 Block</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 px-2.5 font-bold text-slate-900">ControlDyn Instruments</td>
+                        <td class="py-2 px-2.5"><span class="ibadge bg-slate-100 text-slate-700 border border-slate-300">Sensors & Meters</span></td>
+                        <td class="py-2 px-2.5">M. P. Nambiar</td>
+                        <td class="py-2 px-2.5 font-mono text-[#0d6efd]">+91 94351 88390</td>
+                        <td class="py-2 px-2.5 font-mono text-slate-600">nambiar@controldyn.com</td>
+                        <td class="py-2 px-2.5 text-slate-500">Unit 02 Control Room</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ============================================================= -->
+          <!-- 2. PROJECT MANAGER WORKSPACE (Simplified Common Man Language) -->
+          <!-- ============================================================= -->
+          <div id="tier-project-manager" class="hidden space-y-4">
+            
+            <!-- Site Weather & Environmental Alert Banner (Simplified) -->
+            <div class="bg-slate-900 text-slate-300 px-3.5 py-2 rounded-[2px] border border-slate-700 flex flex-wrap items-center justify-between text-xs font-mono gap-2">
+              <div class="flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Ground Weather: Clear (32°C) • Wind is Low & Safe for Crane Work • No Rain Delays Today</span>
+              </div>
+              <span class="text-slate-400">Weather Condition: Normal</span>
+            </div>
+
+            <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+              <div class="border-b border-slate-200 pb-2 mb-3 flex justify-between items-center">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Current Work Happening on Site</h4>
+                  <p class="text-[11px] text-slate-500">Click on any work item to see its progress and call the engineer in charge</p>
+                </div>
+                <span class="text-[11px] font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-[2px] border border-slate-300">
+                  ACTIVE WORK AREAS: 4
+                </span>
+              </div>
+
+              <div class="space-y-2">
+                <!-- 1. Civil Work Package -->
+                <div class="border border-slate-300 rounded-[2px] bg-white">
+                  <div onclick="togglePmWorkStream('pm-disc-civil', 'pm-arrow-civil')" class="px-3 py-2 bg-slate-50 hover:bg-slate-100 cursor-pointer flex items-center justify-between">
+                    <div class="flex items-center space-x-2.5">
+                      <span id="pm-arrow-civil" class="font-mono text-xs text-slate-600 inline-block font-bold">►</span>
+                      <span class="font-bold text-xs text-slate-900">Area B Compressor Foundation Concrete Work</span>
+                      <span class="text-[10px] text-slate-500 font-mono">[CONCRETE-01]</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                      <!-- Float Depletion Badge (Buffer > 10d) -->
+                      <span class="ibadge ibadge-approved font-mono">14 Days Extra Time in Hand</span>
+                      <span class="ibadge ibadge-approved font-mono">88.5% FINISHED</span>
+                      <span class="text-[11px] text-slate-500 font-mono">FINISH BY: 28-SEP-2026</span>
+                    </div>
+                  </div>
+
+                  <div id="pm-disc-civil" class="hidden p-3 border-t border-slate-200 bg-white space-y-2.5">
+                    <!-- Predecessor Handshake Chain (Simplified) -->
+                    <div class="p-2 bg-emerald-50 border border-emerald-200 rounded-[2px] text-xs font-mono text-emerald-900 flex items-center justify-between">
+                      <div class="flex items-center space-x-2">
+                        <span>Foundation Concrete</span>
+                        <span>──[ Safety Check: Concrete is fully dry, hard and tested safe ]──►</span>
+                        <span class="font-bold">Next Team (Pipe Fitters) Can Start</span>
+                      </div>
+                      <span class="ibadge ibadge-approved text-[10px]">APPROVED TO PROCEED</span>
+                    </div>
+
+                    <div>
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="font-semibold text-slate-700">Concrete Work Completed</span>
+                        <span class="font-mono font-bold text-[#086e24]">88.5%</span>
+                      </div>
+                      <div class="w-full bg-slate-200 h-2 rounded-[1px] overflow-hidden">
+                        <div class="bg-[#198754] h-full" style="width: 88.5%"></div>
+                      </div>
+                    </div>
+
+                    <div class="p-2.5 bg-slate-50 rounded-[2px] border border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3">
+                      <div>
+                        <div class="font-bold text-slate-900">Er. Rajesh Nath</div>
+                        <div class="text-[10px] text-slate-500 font-mono">Head Civil Engineer • ID: OIL-ENG-1104</div>
+                      </div>
+                      <div class="flex items-center space-x-4 font-mono text-[11px]">
+                        <div>PHONE: <strong class="text-[#0d6efd]">+91 94350 48821</strong></div>
+                        <div>WALKIE-TALKIE: <strong class="text-slate-800">CHANNEL 04</strong></div>
+                        <div>EMAIL: <span class="text-slate-600">rajesh.nath@oilprojects.in</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2. Piping Work Package -->
+                <div class="border border-slate-300 rounded-[2px] bg-white">
+                  <div onclick="togglePmWorkStream('pm-disc-piping', 'pm-arrow-piping')" class="px-3 py-2 bg-slate-50 hover:bg-slate-100 cursor-pointer flex items-center justify-between">
+                    <div class="flex items-center space-x-2.5">
+                      <span id="pm-arrow-piping" class="font-mono text-xs text-slate-600 inline-block font-bold">►</span>
+                      <span class="font-bold text-xs text-slate-900">24" Process Line Big Pipe Fitting & Welding</span>
+                      <span class="text-[10px] text-slate-500 font-mono">[PIPING-02]</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                      <!-- Float Depletion Badge (Buffer 3-10d) -->
+                      <span class="ibadge ibadge-pending font-mono">4 Days Extra Time in Hand</span>
+                      <span class="ibadge ibadge-corrected font-mono">74.2% FINISHED</span>
+                      <span class="text-[11px] text-slate-500 font-mono">FINISH BY: 30-SEP-2026</span>
+                    </div>
+                  </div>
+
+                  <div id="pm-disc-piping" class="hidden p-3 border-t border-slate-200 bg-white space-y-2.5">
+                    <!-- Predecessor Handshake Chain (With Downstream Handover Alert) -->
+                    <div class="p-2 bg-amber-50 border border-amber-200 rounded-[2px] text-xs font-mono text-amber-900 flex items-center justify-between">
+                      <div class="flex items-center space-x-2">
+                        <span>Pipe Welding Team</span>
+                        <span>──[ Still waiting for water leakage test report ]──►</span>
+                        <span class="font-bold">Next Team Cannot Start Yet</span>
+                      </div>
+                      <span class="ibadge ibadge-pending text-[10px]">NEXT STEP PAUSED</span>
+                    </div>
+
+                    <div>
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="font-semibold text-slate-700">Pipe Joining & Welding Completed</span>
+                        <span class="font-mono font-bold text-[#0d6efd]">74.2%</span>
+                      </div>
+                      <div class="w-full bg-slate-200 h-2 rounded-[1px] overflow-hidden">
+                        <div class="bg-[#0b5ed7] h-full" style="width: 74.2%"></div>
+                      </div>
+                    </div>
+
+                    <div class="p-2.5 bg-slate-50 rounded-[2px] border border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3">
+                      <div>
+                        <div class="font-bold text-slate-900">Er. Ramesh Sharma</div>
+                        <div class="text-[10px] text-slate-500 font-mono">Head Piping Engineer • ID: OIL-ENG-4402</div>
+                      </div>
+                      <div class="flex items-center space-x-4 font-mono text-[11px]">
+                        <div>PHONE: <strong class="text-[#0d6efd]">+91 94351 90214</strong></div>
+                        <div>WALKIE-TALKIE: <strong class="text-slate-800">CHANNEL 02</strong></div>
+                        <div>EMAIL: <span class="text-slate-600">ramesh.sharma@oilprojects.in</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 3. Electrical Work Package -->
+                <div class="border border-slate-300 rounded-[2px] bg-white">
+                  <div onclick="togglePmWorkStream('pm-disc-elec', 'pm-arrow-elec')" class="px-3 py-2 bg-slate-50 hover:bg-slate-100 cursor-pointer flex items-center justify-between">
+                    <div class="flex items-center space-x-2.5">
+                      <span id="pm-arrow-elec" class="font-mono text-xs text-slate-600 inline-block font-bold">►</span>
+                      <span class="font-bold text-xs text-slate-900">Substation 02 Heavy Cable Tray & Power Line Fitting</span>
+                      <span class="text-[10px] text-slate-500 font-mono">[ELECTRIC-03]</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                      <span class="ibadge ibadge-pending font-mono">5 Days Extra Time in Hand</span>
+                      <span class="ibadge ibadge-pending font-mono">62.0% FINISHED</span>
+                      <span class="text-[11px] text-slate-500 font-mono">FINISH BY: 05-OCT-2026</span>
+                    </div>
+                  </div>
+
+                  <div id="pm-disc-elec" class="hidden p-3 border-t border-slate-200 bg-white space-y-2.5">
+                    <div>
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="font-semibold text-slate-700">Cable Tray Fitting Completed</span>
+                        <span class="font-mono font-bold text-[#b45309]">62.0%</span>
+                      </div>
+                      <div class="w-full bg-slate-200 h-2 rounded-[1px] overflow-hidden">
+                        <div class="bg-[#d97706] h-full" style="width: 62.0%"></div>
+                      </div>
+                    </div>
+
+                    <div class="p-2.5 bg-slate-50 rounded-[2px] border border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3">
+                      <div>
+                        <div class="font-bold text-slate-900">Er. Anup Barman</div>
+                        <div class="text-[10px] text-slate-500 font-mono">Head Electrical Engineer • ID: OIL-ENG-2219</div>
+                      </div>
+                      <div class="flex items-center space-x-4 font-mono text-[11px]">
+                        <div>PHONE: <strong class="text-[#0d6efd]">+91 98642 77011</strong></div>
+                        <div>WALKIE-TALKIE: <strong class="text-slate-800">CHANNEL 07</strong></div>
+                        <div>EMAIL: <span class="text-slate-600">anup.barman@oilprojects.in</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 4. Hydrostatic Testing Work Package -->
+                <div class="border border-slate-300 rounded-[2px] bg-white">
+                  <div onclick="togglePmWorkStream('pm-disc-hydro', 'pm-arrow-hydro')" class="px-3 py-2 bg-slate-50 hover:bg-slate-100 cursor-pointer flex items-center justify-between">
+                    <div class="flex items-center space-x-2.5">
+                      <span id="pm-arrow-hydro" class="font-mono text-xs text-slate-600 inline-block font-bold">►</span>
+                      <span class="font-bold text-xs text-slate-900">Water Pressure & Pipe Leakage Testing</span>
+                      <span class="text-[10px] text-slate-500 font-mono">[LEAKTEST-04]</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                      <!-- Critical Float Risk (< 3d) -->
+                      <span class="ibadge ibadge-rejected font-mono">Only 2 Days Left (Risk of Delay)</span>
+                      <span class="ibadge bg-slate-100 text-slate-700 border border-slate-300 font-mono">45.0% FINISHED</span>
+                      <span class="text-[11px] text-slate-500 font-mono">FINISH BY: 02-OCT-2026</span>
+                    </div>
+                  </div>
+
+                  <div id="pm-disc-hydro" class="hidden p-3 border-t border-slate-200 bg-white space-y-2.5">
+                    <div>
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="font-semibold text-slate-700">Testing Equipment Setup Completed</span>
+                        <span class="font-mono font-bold text-slate-700">45.0%</span>
+                      </div>
+                      <div class="w-full bg-slate-200 h-2 rounded-[1px] overflow-hidden">
+                        <div class="bg-[#4b5563] h-full" style="width: 45.0%"></div>
+                      </div>
+                    </div>
+
+                    <div class="p-2.5 bg-slate-50 rounded-[2px] border border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3">
+                      <div>
+                        <div class="font-bold text-slate-900">Er. Kamal Gogoi</div>
+                        <div class="text-[10px] text-slate-500 font-mono">Head Quality & Testing Engineer • ID: OIL-ENG-3091</div>
+                      </div>
+                      <div class="flex items-center space-x-4 font-mono text-[11px]">
+                        <div>PHONE: <strong class="text-[#0d6efd]">+91 94355 10924</strong></div>
+                        <div>WALKIE-TALKIE: <strong class="text-slate-800">CHANNEL 01</strong></div>
+                        <div>EMAIL: <span class="text-slate-600">kamal.gogoi@oilprojects.in</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============================================================= -->
+          <!-- 3. CONTRACTOR WORKSPACE (Simplified Common Man Language)      -->
+          <!-- ============================================================= -->
+          <div id="tier-contractor" class="hidden space-y-4">
+
+            <!-- SUBVIEW A: REVENUE & PROGRESS -->
+            <div id="contractor-subview-revenue" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-l-2 border-l-[#0d6efd]">
+                  <div class="text-[10px] font-bold text-slate-500 uppercase">24" Process Pipes Investment</div>
+                  <div class="text-xl font-bold text-slate-900 mt-1 font-mono">₹1.80 Cr Total Bought</div>
+                  <div class="flex justify-between items-center text-xs mt-1.5 font-mono">
+                    <span class="text-[#086e24] font-bold">78% FITTED & CAN BE BILLED</span>
+                    <span class="text-slate-500">₹1.40 Cr WORTH</span>
+                  </div>
+                  <div class="w-full bg-slate-200 h-1.5 rounded-[1px] overflow-hidden mt-1">
+                    <div class="bg-[#0b5ed7] h-full" style="width: 78%"></div>
+                  </div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-l-2 border-l-[#198754]">
+                  <div class="text-[10px] font-bold text-slate-500 uppercase">This Month's Bill for Work Done</div>
+                  <div class="text-xl font-bold text-[#086e24] mt-1 font-mono">₹42.50 Lakh</div>
+                  <div class="text-[11px] text-slate-500 mt-1">Engineer has checked and approved this bill</div>
+                  <div class="text-[10px] text-slate-400 mt-1 font-mono">BILL DUE DATE: 30-SEP-2026</div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-[2px] border border-eng-cardBorder shadow-sm border-l-2 border-l-[#d97706]">
+                  <div class="text-[10px] font-bold text-slate-500 uppercase">Unused Pipes Stored in Yard</div>
+                  <div class="text-xl font-bold text-slate-900 mt-1 font-mono">₹39.60 Lakh</div>
+                  <div class="text-[11px] text-amber-800 font-semibold mt-1">Stored safely in Bay B yard</div>
+                  <div class="text-[10px] text-slate-400 mt-1 font-mono">RISK OF SITTING UNUSED: MEDIUM</div>
+                </div>
+              </div>
+
+              <!-- Active vs Standby Machinery Burn Rate (Simplified) -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Machine Usage & Idle Time Watch</h4>
+                    <p class="text-[11px] text-slate-500">Track working machines and record idle machines waiting for other teams to finish</p>
+                  </div>
+                  <button onclick="logStandbyNotice()" class="px-2.5 py-1 bg-amber-800 hover:bg-amber-900 text-white font-mono text-[11px] rounded-[2px] transition-colors">
+                    Send Idle Machine Report to Client
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
+                  <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-[2px] flex justify-between items-center">
+                    <div>
+                      <div class="font-bold text-slate-900">Heavy Crane SANY-80T</div>
+                      <div class="text-slate-500 text-[11px]">Lifting big pipes in Bay B</div>
+                    </div>
+                    <div class="text-right">
+                      <span class="ibadge ibadge-approved text-[10px]">WORKED 4.2 HOURS</span>
+                      <div class="text-slate-700 font-bold mt-0.5">Rent: ₹18,900</div>
+                    </div>
+                  </div>
+
+                  <div class="p-2.5 bg-red-50 border border-red-200 rounded-[2px] flex justify-between items-center">
+                    <div>
+                      <div class="font-bold text-red-900">Excavator Digging Machine EX-04</div>
+                      <div class="text-red-700 text-[11px]">Sitting idle (Waiting for ground survey team)</div>
+                    </div>
+                    <div class="text-right">
+                      <span class="ibadge ibadge-rejected text-[10px]">IDLE FOR 1.8 HOURS</span>
+                      <div class="text-red-800 font-bold mt-0.5">Wasted Cost: ₹6,300</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Statutory Billing Deductions Breakdown (Simplified) -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm space-y-2">
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide border-b border-slate-200 pb-1.5">
+                  Monthly Bill Calculation & Final In-Hand Payment
+                </h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-mono">
+                  <div class="p-2 bg-slate-50 border border-slate-200 rounded-[2px]">
+                    <span class="text-slate-500 block text-[10px]">TOTAL WORK SUBMITTED</span>
+                    <strong class="text-slate-900 text-sm">₹42,50,000</strong>
+                  </div>
+                  <div class="p-2 bg-slate-50 border border-slate-200 rounded-[2px]">
+                    <span class="text-slate-500 block text-[10px]">SAFETY DEPOSIT HELD (5%)</span>
+                    <strong class="text-amber-800 text-sm">-₹2,12,500</strong>
+                  </div>
+                  <div class="p-2 bg-slate-50 border border-slate-200 rounded-[2px]">
+                    <span class="text-slate-500 block text-[10px]">TAX & ADVANCE CUT</span>
+                    <strong class="text-slate-700 text-sm">-₹1,85,000</strong>
+                  </div>
+                  <div class="p-2 bg-emerald-50 border border-emerald-200 rounded-[2px]">
+                    <span class="text-[#086e24] block text-[10px]">FINAL MONEY TO RECEIVE</span>
+                    <strong class="text-[#086e24] text-sm">₹38,52,500</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Daily Progression Bar & Tasks Completed -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                  <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Today's Daily Target Status</h4>
+                  <span class="text-xs font-mono font-bold text-[#0d6efd]">8 OUT OF 10 TARGETS DONE</span>
+                </div>
+                
+                <div class="w-full bg-[#e2e7ec] h-3.5 rounded-[1px] overflow-hidden flex border border-slate-300">
+                  <div class="bg-[#198754] text-[9px] text-white flex items-center justify-center font-mono font-bold" style="width: 80%">
+                    80% WORK FINISHED
+                  </div>
+                  <div class="bg-slate-300 text-[9px] text-slate-700 flex items-center justify-center font-mono" style="width: 20%">
+                    20%
+                  </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-200">
+                  <h5 class="text-[11px] font-bold text-slate-700 uppercase mb-2">Completed Shift Work (Earned Revenue)</h5>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-left eng-table border-collapse">
+                      <thead>
+                        <tr>
+                          <th class="py-2 px-2.5">Work Done</th>
+                          <th class="py-2 px-2.5">Quantity</th>
+                          <th class="py-2 px-2.5">Rate Agreed</th>
+                          <th class="py-2 px-2.5">Money Earned</th>
+                          <th class="py-2 px-2.5">Approval</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100">
+                        <tr>
+                          <td class="py-2 px-2.5 font-semibold text-slate-900">24" Pipe Fitting (Bay B)</td>
+                          <td class="py-2 px-2.5 font-mono">2 Big Pipes</td>
+                          <td class="py-2 px-2.5 font-mono">₹45,000 each</td>
+                          <td class="py-2 px-2.5 font-mono font-bold text-[#086e24]">₹90,000</td>
+                          <td class="py-2 px-2.5"><span class="ibadge ibadge-approved">VERIFIED</span></td>
+                        </tr>
+                        <tr>
+                          <td class="py-2 px-2.5 font-semibold text-slate-900">Pipe Joint Welding Work</td>
+                          <td class="py-2 px-2.5 font-mono">8 Joints</td>
+                          <td class="py-2 px-2.5 font-mono">₹12,000 each</td>
+                          <td class="py-2 px-2.5 font-mono font-bold text-[#086e24]">₹96,000</td>
+                          <td class="py-2 px-2.5"><span class="ibadge ibadge-approved">VERIFIED</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUBVIEW B: INVENTORY & MATERIAL/EQUIPMENT REQUESTS (Simplified) -->
+            <div id="contractor-subview-inventory" class="hidden space-y-4">
+              
+              <!-- Site Inventory Breakdown with Material Wastage Ratio -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+                <div class="border-b border-slate-200 pb-2 mb-3 flex justify-between items-center">
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Machines & Building Materials Present on Site</h4>
+                    <p class="text-[11px] text-slate-500">List of equipment working on site and spare materials available in storage</p>
+                  </div>
+                  <span class="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-[2px] border border-slate-300">
+                    STATUS: CHECKED
+                  </span>
+                </div>
+
+                <div class="mb-3 p-2 bg-slate-50 border border-slate-200 rounded-[2px] text-xs font-mono text-slate-700 flex justify-between">
+                  <span>Pipes Needed on Paper: <strong>450m</strong> | Total Pipes Taken: <strong>480m</strong></span>
+                  <span class="text-[#086e24] font-bold">Cut-off Scrap Metal: 6.2% (Safe & within 7.0% allowance)</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left eng-table border-collapse">
+                    <thead>
+                      <tr>
+                        <th class="py-2 px-2.5">Site Location</th>
+                        <th class="py-2 px-2.5">Category</th>
+                        <th class="py-2 px-2.5">Item Name</th>
+                        <th class="py-2 px-2.5">Model / Size</th>
+                        <th class="py-2 px-2.5">Quantity</th>
+                        <th class="py-2 px-2.5">Current Status</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      <tr>
+                        <td class="py-2 px-2.5 font-semibold text-slate-800">Bay B (Pipe Line)</td>
+                        <td class="py-2 px-2.5">Heavy Machine</td>
+                        <td class="py-2 px-2.5">Big Lifting Crane</td>
+                        <td class="py-2 px-2.5 font-mono text-slate-600">80-Ton Lifting Capacity</td>
+                        <td class="py-2 px-2.5 font-mono font-bold">1 Crane</td>
+                        <td class="py-2 px-2.5"><span class="ibadge ibadge-approved">WORKING</span></td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 px-2.5 font-semibold text-slate-800">Bay B Storage Ground</td>
+                        <td class="py-2 px-2.5">Pipes in Stock</td>
+                        <td class="py-2 px-2.5">24-Inch Heavy Steel Pipes</td>
+                        <td class="py-2 px-2.5 font-mono text-slate-600">Standard Heavy Grade</td>
+                        <td class="py-2 px-2.5 font-mono font-bold">480 Meters</td>
+                        <td class="py-2 px-2.5"><span class="ibadge ibadge-approved">READY IN STOCK</span></td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 px-2.5 font-semibold text-slate-800">Power Substation 02</td>
+                        <td class="py-2 px-2.5">Electrical Tool</td>
+                        <td class="py-2 px-2.5">Heavy Wire Pulling Machine</td>
+                        <td class="py-2 px-2.5 font-mono text-slate-600">Motorized Cable Roller</td>
+                        <td class="py-2 px-2.5 font-mono font-bold">2 Machines</td>
+                        <td class="py-2 px-2.5"><span class="ibadge ibadge-approved">WORKING</span></td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 px-2.5 font-semibold text-slate-800">Tank Farm Area</td>
+                        <td class="py-2 px-2.5">Building Iron</td>
+                        <td class="py-2 px-2.5">Foundation Iron Rods (TMT Rebar)</td>
+                        <td class="py-2 px-2.5 font-mono text-slate-600">Thick Heavy Rods</td>
+                        <td class="py-2 px-2.5 font-mono font-bold text-amber-800">14.5 Tons</td>
+                        <td class="py-2 px-2.5"><span class="ibadge ibadge-pending">STOCK RUNNING LOW</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Indents from Site Engineers (Simplified) -->
+              <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+                <div class="border-b border-slate-200 pb-2 mb-3 flex justify-between items-center">
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Requests for New Tools & Materials from Engineers</h4>
+                    <p class="text-[11px] text-slate-500">Site Engineers asking for tools or supplies to finish their work</p>
+                  </div>
+                  <span class="ibadge ibadge-pending font-mono" id="contractor-indent-badge">
+                    2 REQUESTS PENDING
+                  </span>
+                </div>
+
+                <div class="space-y-2.5" id="contractor-indent-list">
+                  <div class="p-3 bg-slate-50 rounded-[2px] border border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3" id="indent-card-1">
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <span class="font-bold text-slate-900">Electric Pipe Bending Machine (1 Machine)</span>
+                        <span class="font-mono text-[10px] bg-slate-200 text-slate-700 px-1 py-0.5 rounded-[2px]">HEAVY PIPE BENDER</span>
+                      </div>
+                      <div class="text-slate-600 mt-0.5">
+                        Requested by: <strong class="text-slate-800">Er. Ramesh Sharma (Piping Lead)</strong> to bend and turn pipes in Bay B
+                      </div>
+                      <div class="text-[10px] text-slate-400 font-mono mt-0.5">NEEDED AT SITE BY: 26-SEP-2026</div>
+                    </div>
+                    <button onclick="approveContractorIndent(1, 'Electric Pipe Bending Machine')" class="px-3.5 py-1.5 bg-[#198754] hover:bg-[#157347] text-white font-bold text-xs rounded-[2px] uppercase tracking-wider transition-colors">
+                      APPROVE
+                    </button>
+                  </div>
+
+                  <div class="p-3 bg-slate-50 rounded-[2px] border border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3" id="indent-card-2">
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <span class="font-bold text-slate-900">Heavy Strength Base Grout Cement (120 Bags)</span>
+                        <span class="font-mono text-[10px] bg-slate-200 text-slate-700 px-1 py-0.5 rounded-[2px]">STRONG HOLD CEMENT</span>
+                      </div>
+                      <div class="text-slate-600 mt-0.5">
+                        Requested by: <strong class="text-slate-800">Er. Rajesh Nath (Civil Lead)</strong> to secure compressor base tightly
+                      </div>
+                      <div class="text-[10px] text-slate-400 font-mono mt-0.5">NEEDED AT SITE BY: 27-SEP-2026</div>
+                    </div>
+                    <button onclick="approveContractorIndent(2, 'Base Grout Cement')" class="px-3.5 py-1.5 bg-[#198754] hover:bg-[#157347] text-white font-bold text-xs rounded-[2px] uppercase tracking-wider transition-colors">
+                      APPROVE
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- ============================================================= -->
+          <!-- 4. SITE ENGINEER WORKSPACE (Simplified Common Man Language)   -->
+          <!-- ============================================================= -->
+          <div id="tier-site-engineer" class="hidden space-y-4">
+            
+            <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm space-y-3.5">
+              <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide border-b border-slate-200 pb-2">
+                Area B Piping & Pipe Fitting Progress
+              </h4>
+
+              <!-- Daily Target Bar -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-slate-700">Today's Shift Target: Worker Reports Checked</span>
+                  <span class="font-mono font-bold text-[#086e24]" id="se-shift-text">6 / 10 Approved (60%)</span>
+                </div>
+                <div class="w-full bg-[#e2e7ec] h-3.5 rounded-[1px] overflow-hidden flex border border-slate-300">
+                  <div id="se-shift-bar" class="bg-[#198754] h-full text-[9px] text-white flex items-center justify-center font-mono font-bold transition-all duration-150" style="width: 60%">
+                    60%
+                  </div>
+                </div>
+              </div>
+
+              <!-- Overall Discipline Progress Bar -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-slate-700">Total Work Completed in Area B</span>
+                  <span class="font-mono font-bold text-[#0d6efd]" id="se-overall-text">72% Completed</span>
+                </div>
+                <div class="w-full bg-[#e2e7ec] h-3.5 rounded-[1px] overflow-hidden flex border border-slate-300">
+                  <div id="se-overall-bar" class="bg-[#0b5ed7] h-full text-[9px] text-white flex items-center justify-center font-mono font-bold transition-all duration-150" style="width: 72%">
+                    72%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Operative Requests Counter & Quick Approve (Simplified) -->
+            <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+              <div class="flex flex-wrap justify-between items-center border-b border-slate-200 pb-2 mb-3 gap-2">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Worker Daily Work Reports</h4>
+                  <p class="text-[11px] text-slate-500">Check work reported by site workers before adding it to overall project progress</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button onclick="bulkApproveOperatives()" id="btn-bulk-approve" class="px-3 py-1 bg-[#198754] hover:bg-[#157347] text-white font-mono text-[11px] font-bold rounded-[2px] transition-colors">
+                    APPROVE ALL SELECTED (2)
+                  </button>
+                  <span class="ibadge ibadge-pending font-mono" id="se-counter-badge">
+                    2 REPORTS WAITING
+                  </span>
+                </div>
+              </div>
+
+              <!-- Bulk Checkbox & Shift Velocity Anomaly Detection -->
+              <div class="space-y-2.5" id="se-requests-container">
+                <div class="p-2.5 bg-slate-50 rounded-[2px] border border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3" id="se-req-1">
+                  <div class="flex items-start space-x-2.5">
+                    <input type="checkbox" checked class="mt-1 se-req-checkbox rounded-[1px]" onchange="updateBulkApproveCount()"/>
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <span class="font-bold text-slate-900">M. Hazarika (Welder #22)</span>
+                        <span class="ibadge ibadge-corrected font-mono text-[9px]">Welding</span>
+                      </div>
+                      <div class="text-slate-600 mt-0.5">"Completed joint J-103 welding and root pass at Bay B"</div>
+                      <div class="text-[10px] text-slate-400 font-mono mt-0.5">10:45 AM • Quality test token tagged</div>
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <button onclick="openVerificationModal('Joint J-103 Welding', 'Drawing Sheet B-0482')" class="px-2.5 py-1 border border-slate-300 hover:bg-slate-200 text-slate-700 text-[11px] rounded-[2px] font-mono">
+                      Check Drawing
+                    </button>
+                    <button onclick="approveOperativeRequest(1)" class="px-3.5 py-1 bg-[#198754] hover:bg-[#157347] text-white font-bold text-xs rounded-[2px] uppercase tracking-wider transition-colors">
+                      APPROVE
+                    </button>
+                  </div>
+                </div>
+
+                <div class="p-2.5 bg-slate-50 rounded-[2px] border border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3" id="se-req-2">
+                  <div class="flex items-start space-x-2.5">
+                    <input type="checkbox" checked class="mt-1 se-req-checkbox rounded-[1px]" onchange="updateBulkApproveCount()"/>
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <span class="font-bold text-slate-900">D. Phukan (Rigger #07)</span>
+                        <span class="ibadge ibadge-corrected font-mono text-[9px]">Pipe Lifting</span>
+                        <!-- Velocity Warning Callout in Simple Words -->
+                        <span class="ibadge ibadge-pending text-[10px] font-mono">⚠ Check Warning: Very High Quantity Reported Today</span>
+                      </div>
+                      <div class="text-slate-600 mt-0.5">"Spool 05 hoisted onto trestle support using Crane CR-17"</div>
+                      <div class="text-[10px] text-slate-400 font-mono mt-0.5">11:20 AM • Crane driver log confirmed</div>
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <button onclick="openVerificationModal('Spool 05 Pipe Fitting', 'Drawing Sheet B-0485')" class="px-2.5 py-1 border border-slate-300 hover:bg-slate-200 text-slate-700 text-[11px] rounded-[2px] font-mono">
+                      Check Drawing
+                    </button>
+                    <button onclick="approveOperativeRequest(2)" class="px-3.5 py-1 bg-[#198754] hover:bg-[#157347] text-white font-bold text-xs rounded-[2px] uppercase tracking-wider transition-colors">
+                      APPROVE
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ============================================================= -->
+          <!-- 5. SITE OPERATIVES WORKSPACE (Simplified Common Man Language) -->
+          <!-- ============================================================= -->
+          <div id="tier-site-operatives" class="hidden max-w-lg mx-auto space-y-4 pt-4">
+            
+            <div id="op-input-card" class="bg-white p-5 rounded-[2px] border border-eng-cardBorder shadow-sm">
+              <div class="flex justify-between items-start mb-2 border-b border-slate-200 pb-2">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">Worker Daily Report Entry</h4>
+                  <p class="text-[11px] text-slate-500">Record the work you finished today directly from site</p>
+                </div>
+                <!-- Offline-First Sync Pill (Simplified) -->
+                <span class="ibadge ibadge-approved font-mono text-[10px]">
+                  ● Works Without Internet (Saves on Phone Automatically)
+                </span>
+              </div>
+
+              <textarea id="op-text-input" rows="4" class="w-full text-xs p-2.5 border border-slate-300 rounded-[2px] focus:outline-none focus:border-[#0d6efd] placeholder-slate-400 font-sans" 
+                placeholder="Type your work here (e.g. welded 2 joints, placed 1 pipe on stand)..."></textarea>
+
+              <!-- Audio Recording Playback & Review Chip (Simplified) -->
+              <div id="audio-playback-chip" class="hidden mt-2 p-2 bg-slate-100 border border-slate-300 rounded-[2px] flex items-center justify-between text-xs font-mono text-slate-700">
+                <div class="flex items-center space-x-2">
+                  <button type="button" onclick="playSimulatedAudio()" class="w-6 h-6 bg-[#0d6efd] text-white rounded-full flex items-center justify-center font-bold text-[10px]">▶</button>
+                  <span>Voice Message Recorded (8 seconds)</span>
+                </div>
+                <button type="button" onclick="reRecordVoice()" class="text-amber-800 font-bold hover:underline">↺ Record Again</button>
+              </div>
+
+              <!-- Glove-Friendly Targets (min 48px height) -->
+              <div class="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" onclick="simulateOperativeVoice()" class="h-12 border border-slate-300 text-xs font-bold rounded-[2px] text-slate-800 bg-slate-50 hover:bg-slate-100 flex items-center justify-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
+                    <span>Speak by Voice</span>
+                  </button>
+                  
+                  <label class="h-12 cursor-pointer border border-slate-300 text-xs font-bold rounded-[2px] text-slate-800 bg-slate-50 hover:bg-slate-100 flex items-center justify-center space-x-2">
+                    <svg class="w-4 h-4 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span>Attach Work Photo</span>
+                    <input type="file" accept="image/*" class="hidden" onchange="operativePhotoSelected(this)"/>
+                  </label>
+                </div>
+
+                <div id="op-file-name" class="text-[11px] text-slate-500 italic font-mono"></div>
+              </div>
+
+              <div class="mt-4">
+                <button onclick="submitOperativeLog()" class="w-full h-12 bg-[#181b22] hover:bg-[#252a35] text-white font-bold text-xs uppercase tracking-wider rounded-[2px] transition-colors flex items-center justify-center">
+                  Send Work Report
+                </button>
+              </div>
+            </div>
+
+            <!-- Clean Green State -->
+            <div id="op-done-card" class="hidden bg-[#ebfaef] border border-[#b6ebc4] rounded-[2px] p-8 text-center">
+              <div class="w-12 h-12 bg-[#198754] text-white text-2xl font-bold rounded-full flex items-center justify-center mx-auto mb-3">
+                ✓
+              </div>
+              <h2 class="text-3xl font-black text-[#086e24] tracking-wider font-mono">DONE</h2>
+              <p class="text-xs font-semibold text-slate-700 mt-2">Your work report has been sent to your Site Engineer for check.</p>
+              <button onclick="resetOperativeForm()" class="mt-5 px-4 py-2 bg-[#198754] hover:bg-[#157347] text-white text-xs font-bold uppercase rounded-[2px] tracking-wider transition-colors font-mono">
+                Send Another Work Report
+              </button>
+            </div>
+
+          </div>
+
+          <!-- ============================================================= -->
+          <!-- 6. PLANNER & CONTROLS WORKSPACE                               -->
+          <!-- ============================================================= -->
+          <div id="tier-planner" class="hidden space-y-4">
+            <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+              <h4 class="text-xs font-bold uppercase text-slate-900 mb-1">Schedule Review & Linking Desk</h4>
+              <p class="text-[11px] text-slate-500">Incoming site reports linked directly to the main master schedule[cite: 1, 3].</p>
+            </div>
+          </div>
+
+          <!-- ============================================================= -->
+          <!-- 7. DISCIPLINE ENGINEER WORKSPACE                              -->
+          <!-- ============================================================= -->
+          <div id="tier-discipline-engineer" class="hidden space-y-4">
+            <div class="bg-white p-4 rounded-[2px] border border-eng-cardBorder shadow-sm">
+              <h4 class="text-xs font-bold uppercase text-slate-900 mb-1">Field Word Translator & Quality Log</h4>
+              <p class="text-[11px] text-slate-500">Converts site worker slang into standard engineering records[cite: 3].</p>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 3. MODALS & CROSS-TIER OVERLAYS                                           -->
+  <!-- ========================================================================= -->
+
+  <!-- Quick Item Finder (Ctrl+K) -->
+  <div id="command-palette-overlay" class="hidden fixed inset-0 bg-black/60 z-50 flex items-start justify-center pt-20 px-4">
+    <div class="w-full max-w-lg bg-[#1a1e26] border border-[#343b49] rounded-[2px] shadow-2xl overflow-hidden font-mono text-xs">
+      <div class="p-3 border-b border-[#2d3440] flex items-center space-x-2">
+        <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="command-palette-input" placeholder="Search work item, contractor name, or area..." 
+          class="w-full bg-transparent text-slate-200 focus:outline-none placeholder-slate-500 text-xs" onkeyup="filterCommandResults(this.value)"/>
+        <kbd class="text-[10px] bg-[#242a33] text-slate-400 px-1 py-0.5 rounded cursor-pointer" onclick="closeCommandPalette()">ESC</kbd>
+      </div>
+      <div class="p-2 max-h-60 overflow-y-auto space-y-1 text-slate-300" id="command-results-list">
+        <div onclick="executeCommand('24-Inch Pipe Erection')" class="p-2 hover:bg-[#252a33] rounded-[2px] cursor-pointer flex justify-between">
+          <span>24-Inch Big Pipe Fitting & Welding</span>
+          <span class="text-slate-500">Piping / Area B</span>
+        </div>
+        <div onclick="executeCommand('Compressor Foundation')" class="p-2 hover:bg-[#252a33] rounded-[2px] cursor-pointer flex justify-between">
+          <span>Compressor B Concrete Foundation</span>
+          <span class="text-slate-500">Civil / Bay B</span>
+        </div>
+        <div onclick="executeCommand('Apex Infra')" class="p-2 hover:bg-[#252a33] rounded-[2px] cursor-pointer flex justify-between">
+          <span>Apex Infra Projects Ltd — Civil Contractor</span>
+          <span class="text-slate-500">Contractor List</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Field Photo vs Engineering Drawing Modal (Simplified) -->
+  <div id="drawing-modal-overlay" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-3xl bg-white border border-slate-300 rounded-[2px] shadow-2xl p-4 font-sans text-xs">
+      <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-3">
+        <h4 class="font-bold text-slate-900 uppercase">Check Worker Photo Against Approved Drawing</h4>
+        <button onclick="closeVerificationModal()" class="text-slate-500 hover:text-slate-800 font-mono text-sm">✕</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-[2px]">
+          <div class="font-bold text-slate-700 mb-1" id="modal-photo-title">Photo Sent by Worker (Joint J-103)</div>
+          <div class="h-44 bg-slate-200 rounded flex flex-col items-center justify-center border border-slate-300 text-slate-600 font-mono text-[11px] space-y-1">
+            <svg class="w-8 h-8 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <span>[SITE PHOTO RECORD: JOINT_WELD_BAYB.JPG]</span>
+            <span class="text-emerald-700 font-bold">Weld Joint Width: Checked & Correct (12mm)</span>
+          </div>
+        </div>
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-[2px]">
+          <div class="font-bold text-slate-700 mb-1" id="modal-drawing-title">Approved Blueprint Drawing (Sheet B-0482)</div>
+          <div class="h-44 bg-blue-50/50 rounded flex flex-col items-center justify-center border border-blue-200 text-blue-900 font-mono text-[11px] space-y-1">
+            <svg class="w-8 h-8 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+            <span>APPROVED PIPELINE DESIGN</span>
+            <span>BEVEL ANGLE: 37.5° • GAP: 2.4MM</span>
+            <span class="text-blue-700 font-bold">Quality Check: Approved to Test</span>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3 flex justify-end">
+        <button onclick="closeVerificationModal()" class="px-4 py-1.5 bg-[#181b22] text-white text-xs font-mono rounded-[2px]">Close Window</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Worker Safety Record Modal (Simplified) -->
+  <div id="hse-modal-overlay" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-white border border-slate-300 rounded-[2px] shadow-2xl p-4 font-sans text-xs">
+      <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-3">
+        <h4 class="font-bold text-slate-900 uppercase">Site Safety & Accident Check Report</h4>
+        <button onclick="closeHseModal()" class="text-slate-500 hover:text-slate-800 font-mono text-sm">✕</button>
+      </div>
+      <div class="space-y-2 text-slate-700">
+        <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-[2px] flex justify-between items-center font-mono">
+          <span>Total Safe Hours Worked on Site:</span>
+          <strong class="text-emerald-800 font-bold">1,420,500 Hours</strong>
+        </div>
+        <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-[2px] flex justify-between items-center font-mono">
+          <span>Accidents Causing Work Stoppage:</span>
+          <strong class="text-emerald-800 font-bold">0 (None Recorded)</strong>
+        </div>
+        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-[2px] flex justify-between items-center font-mono">
+          <span>Government Safety & Factory Permits:</span>
+          <strong class="text-slate-900 font-bold">Valid & Active through March 2027</strong>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2">
+          Safety verification check is complete. There are zero active stop-work safety notices on this site. Releasing contractor payment is safe and compliant.
+        </p>
+      </div>
+      <div class="mt-3 flex justify-end">
+        <button onclick="closeHseModal()" class="px-4 py-1.5 bg-[#181b22] text-white text-xs font-mono rounded-[2px]">Close Window</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 4. JAVASCRIPT STATE ENGINE                                                -->
+  <!-- ========================================================================= -->
+  <script>
+    let currentUser = { role: '', name: '', id: '', tier: '' };
+    let sidebarCollapsed = false;
+
+    // Site Engineer Progress Counters State
+    let seShiftCount = 6;
+    let seShiftTotal = 10;
+    let seOverallProgress = 72;
+
+    // Real industrial SVG micro-icons (Zero emojis)
+    const iconSvgs = {
+      health: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
+      finance: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
+      contacts: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 2v20M8 2v20M3 7h18M3 17h18"/></svg>',
+      ongoing: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20M5 20V8l7-5 7 5v12"/></svg>',
+      revenue: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+      inventory: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>',
+      progress: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>',
+      log: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+      generic: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>'
+    };
+
+    const navDefinitions = {
+      'client': [
+        { label: 'Work Progress', iconKey: 'health', action: () => switchClientTab('health') },
+        { label: 'Money & Payments', iconKey: 'finance', action: () => switchClientTab('finance') },
+        { label: 'Contractor Phone Book', iconKey: 'contacts', action: () => switchClientTab('contacts') }
+      ],
+      'project-manager': [
+        { label: 'Active Site Works', iconKey: 'ongoing', action: null }
+      ],
+      'contractor': [
+        { label: 'Earnings & Shift Work', iconKey: 'revenue', action: () => switchContractorTab('revenue') },
+        { label: 'Materials & Equipment', iconKey: 'inventory', action: () => switchContractorTab('inventory') }
+      ],
+      'site-engineer': [
+        { label: 'Area Work Progress', iconKey: 'progress', action: null }
+      ],
+      'site-operatives': [
+        { label: 'Send Work Report', iconKey: 'log', action: null }
+      ],
+      'planner': [
+        { label: 'Schedule Desk', iconKey: 'generic', action: null }
+      ],
+      'discipline-engineer': [
+        { label: 'Word Translator', iconKey: 'generic', action: null }
+      ]
+    };
+
+    // The backend is the only source of roles: FIELD -> Submit Update,
+    // PLANNER -> Approval Queue, PM -> Dashboard. The other tiers in this
+    // page (client, contractor, site-engineer, discipline-engineer) stay in
+    // the markup but are unreachable until the backend defines those roles.
+    function determineTier(role) {
+      switch(role) {
+        case 'FIELD': return 'site-operatives';
+        case 'PLANNER': return 'planner';
+        case 'PM': return 'project-manager';
+        default: return 'site-operatives';
+      }
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('app-sidebar');
+      const toggleBtn = document.getElementById('sidebar-toggle-btn');
+      const textElements = document.querySelectorAll('.sidebar-text');
+      const logoText = document.getElementById('sidebar-logo-text');
+
+      sidebarCollapsed = !sidebarCollapsed;
+
+      if (sidebarCollapsed) {
+        sidebar.classList.remove('w-56');
+        sidebar.classList.add('w-12');
+        toggleBtn.innerText = '»';
+        textElements.forEach(el => el.classList.add('hidden'));
+        logoText.classList.add('hidden');
+      } else {
+        sidebar.classList.remove('w-12');
+        sidebar.classList.add('w-56');
+        toggleBtn.innerText = '«';
+        textElements.forEach(el => el.classList.remove('hidden'));
+        logoText.classList.remove('hidden');
+      }
+      renderNavigation();
+    }
+
+    function renderNavigation() {
+      const navContainer = document.getElementById('sidebar-nav');
+      navContainer.innerHTML = '';
+      const items = navDefinitions[currentUser.tier] || [];
+
+      items.forEach((item, index) => {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.onclick = (e) => {
+          e.preventDefault();
+          if (item.action) item.action();
+        };
+        a.className = index === 0 
+          ? 'bg-[#252a33] text-slate-100 flex items-center px-2 py-1.5 text-xs font-medium rounded-[2px]'
+          : 'text-slate-400 hover:bg-[#252a33] hover:text-slate-200 flex items-center px-2 py-1.5 text-xs font-medium rounded-[2px] transition-colors';
+        
+        const iconHtml = iconSvgs[item.iconKey] || iconSvgs['generic'];
+        
+        if (sidebarCollapsed) {
+          a.innerHTML = `<span class="mx-auto" title="${item.label}">${iconHtml}</span>`;
+        } else {
+          a.innerHTML = `<span class="mr-2 text-slate-400">${iconHtml}</span><span class="truncate sidebar-text">${item.label}</span>`;
+        }
+        navContainer.appendChild(a);
+      });
+    }
+
+    /* ---- Authentication --------------------------------------------------
+       The credential check lives on the backend (POST /api/auth/login):
+       this page only stores the token + role it gets back. Swapping demo
+       accounts for real hashed-password users later needs no change here. */
+    const API_BASE = (window.__SITEBRIDGE_API_URL__ || 'http://localhost:8000').replace(/\/+$/, '');
+    const AUTH_STORAGE_KEY = 'sitebridge_auth';
+    const ROLE_LABELS = { FIELD: 'Field User', PLANNER: 'Planner', PM: 'Project Manager' };
+
+    function readSession() {
+      try { return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null'); } catch (e) { return null; }
+    }
+
+    function writeSession(token, user) {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token: token, user: user }));
+    }
+
+    function clearSession() {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+
+    function detailMessage(res, body) {
+      if (body && typeof body.detail === 'string') return body.detail;
+      if (body && Array.isArray(body.detail)) {
+        return body.detail.map(function (d) { return d.msg || d; }).join(' ');
+      }
+      if (body && body.message) return body.message;
+      return res && res.status ? 'HTTP ' + res.status : '';
+    }
+
+    function showLoginError(message) {
+      const box = document.getElementById('login-error');
+      box.innerText = message;
+      box.classList.remove('hidden');
+    }
+
+    function hideLoginError() {
+      document.getElementById('login-error').classList.add('hidden');
+    }
+
+    function setSignInBusy(busy) {
+      const btn = document.getElementById('btn-sign-in');
+      btn.disabled = busy;
+      btn.innerText = busy ? 'Signing in…' : 'Sign In';
+    }
+
+    function startSession(user, token) {
+      writeSession(token, user);
+      currentUser = {
+        role: user.role,
+        name: user.full_name || user.email,
+        id: user.email,
+        tier: determineTier(user.role)
+      };
+
+      document.getElementById('auth-landing-page').classList.add('hidden');
+      const shell = document.getElementById('main-application-shell');
+      shell.classList.remove('hidden');
+      shell.classList.add('flex');
+
+      const roleLabel = ROLE_LABELS[user.role] || user.role;
+      document.getElementById('header-authenticated-role').innerText = roleLabel;
+      document.getElementById('header-user-name').innerText = currentUser.name;
+      document.getElementById('header-user-id').innerText = currentUser.id;
+      document.getElementById('sidebar-name-display').innerText = currentUser.name;
+      document.getElementById('sidebar-id-display').innerText = currentUser.id;
+      document.getElementById('sidebar-badge-display').innerText = roleLabel;
+
+      initializeWorkstation();
+    }
+
+    async function handleAccessSubmit(event) {
+      event.preventDefault();
+      hideLoginError();
+
+      const email = document.getElementById('input-email').value.trim();
+      const password = document.getElementById('input-password').value;
+      if (!email || !password) {
+        showLoginError('Authentication rejected: email and password are required.');
+        return;
+      }
+
+      setSignInBusy(true);
+      try {
+        const res = await fetch(API_BASE + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, password: password })
+        });
+        const body = await res.json().catch(function () { return null; });
+        if (!res.ok || !body || !body.access_token) {
+          throw new Error(detailMessage(res, body) || 'no response from the server');
+        }
+        startSession(body.user, body.access_token);
+      } catch (err) {
+        showLoginError('Authentication rejected: ' + (err && err.message ? err.message : 'unknown error'));
+      } finally {
+        setSignInBusy(false);
+      }
+    }
+
+    function handleLogout() {
+      clearSession();
+      currentUser = { role: '', name: '', id: '', tier: '' };
+      document.getElementById('access-form').reset();
+      document.getElementById('main-application-shell').classList.add('hidden');
+      document.getElementById('main-application-shell').classList.remove('flex');
+      document.getElementById('auth-landing-page').classList.remove('hidden');
+      hideLoginError();
+    }
+
+    function initializeWorkstation() {
+      renderNavigation();
+
+      ['client', 'project-manager', 'contractor', 'site-engineer', 'site-operatives', 'planner', 'discipline-engineer'].forEach(t => {
+        const panel = document.getElementById(`tier-${t}`);
+        if (panel) panel.classList.add('hidden');
+      });
+
+      const activePanel = document.getElementById(`tier-${currentUser.tier}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+
+      const titleEl = document.getElementById('view-title');
+      const subTitleEl = document.getElementById('view-subtitle');
+
+      switch(currentUser.tier) {
+        case 'client':
+          titleEl.innerText = "Project Status & Money Overview";
+          subTitleEl.innerText = "Real-time delivery progress, payment schedules, and key contractor contacts";
+          switchClientTab('health');
+          break;
+        case 'project-manager':
+          titleEl.innerText = "Dashboard";
+          subTitleEl.innerText = "Project roll-up: progress, coverage and recent approvals";
+          break;
+        case 'contractor':
+          titleEl.innerText = "Contractor Earnings & Tools";
+          subTitleEl.innerText = "Today's earned money, machine tracking, and tool requests";
+          switchContractorTab('revenue');
+          break;
+        case 'site-engineer':
+          titleEl.innerText = "Pipe Fitting Area B Status";
+          subTitleEl.innerText = "Area work progress and approving daily worker reports";
+          break;
+        case 'site-operatives':
+          titleEl.innerText = "Submit Update";
+          subTitleEl.innerText = "Record the work you completed today — it is sent for review";
+          break;
+        case 'planner':
+          titleEl.innerText = "Approval Queue";
+          subTitleEl.innerText = "Incoming site reports linked to the master schedule";
+          break;
+        default:
+          titleEl.innerText = "Workstation Terminal";
+          subTitleEl.innerText = "Main project control screen";
+      }
+    }
+
+    // Client Subview Toggles
+    function switchClientTab(tab) {
+      const healthView = document.getElementById('client-subview-health');
+      const financeView = document.getElementById('client-subview-finance');
+      const contactsView = document.getElementById('client-subview-contacts');
+
+      healthView.classList.add('hidden');
+      financeView.classList.add('hidden');
+      contactsView.classList.add('hidden');
+
+      if (tab === 'health') {
+        healthView.classList.remove('hidden');
+        showToast("Viewing Work Progress");
+      } else if (tab === 'finance') {
+        financeView.classList.remove('hidden');
+        showToast("Viewing Money & Payments");
+      } else {
+        contactsView.classList.remove('hidden');
+        showToast("Viewing Contractor Phone Book");
+      }
+    }
+
+    function exportClientBrief() {
+      showToast("Downloaded: Project-Status-Summary.pdf");
+    }
+
+    // Contractor Subview Toggles
+    function switchContractorTab(tab) {
+      const revView = document.getElementById('contractor-subview-revenue');
+      const invView = document.getElementById('contractor-subview-inventory');
+
+      if (tab === 'revenue') {
+        revView.classList.remove('hidden');
+        invView.classList.add('hidden');
+        showToast("Viewing Today's Earnings");
+      } else {
+        revView.classList.add('hidden');
+        invView.classList.remove('hidden');
+        showToast("Viewing Materials & Tools");
+      }
+    }
+
+    function logStandbyNotice() {
+      showToast("Idle Machine Report Sent to Client Office");
+    }
+
+    function approveContractorIndent(indentId, itemName) {
+      const card = document.getElementById(`indent-card-${indentId}`);
+      if (card) card.remove();
+
+      const remaining = document.getElementById('contractor-indent-list').children.length;
+      document.getElementById('contractor-indent-badge').innerText = `${remaining} REQUESTS PENDING`;
+      showToast(`Approved Request: ${itemName}`);
+    }
+
+    function togglePmWorkStream(contentId, arrowId) {
+      const content = document.getElementById(contentId);
+      const arrow = document.getElementById(arrowId);
+      
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        arrow.innerText = '▼';
+      } else {
+        content.classList.add('hidden');
+        arrow.innerText = '►';
+      }
+    }
+
+    // Site Engineer Bulk Approval & Anomaly Inspection
+    function updateBulkApproveCount() {
+      const checkedBoxes = document.querySelectorAll('.se-req-checkbox:checked').length;
+      const btn = document.getElementById('btn-bulk-approve');
+      if (btn) {
+        btn.innerText = `APPROVE ALL SELECTED (${checkedBoxes})`;
+        btn.disabled = (checkedBoxes === 0);
+      }
+    }
+
+    function bulkApproveOperatives() {
+      const checkedBoxes = document.querySelectorAll('.se-req-checkbox:checked');
+      if (checkedBoxes.length === 0) return;
+
+      checkedBoxes.forEach(cb => {
+        const item = cb.closest('[id^="se-req-"]');
+        if (item) item.remove();
+        seShiftCount = Math.min(seShiftCount + 1, seShiftTotal);
+        seOverallProgress = Math.min(seOverallProgress + 1, 100);
+      });
+
+      refreshSeProgressBars();
+      showToastWithUndo("All Selected Worker Reports Approved");
+    }
+
+    function approveOperativeRequest(requestId) {
+      const item = document.getElementById(`se-req-${requestId}`);
+      if (item) item.remove();
+
+      seShiftCount = Math.min(seShiftCount + 1, seShiftTotal);
+      seOverallProgress = Math.min(seOverallProgress + 1, 100);
+
+      refreshSeProgressBars();
+      showToastWithUndo("Worker Report Approved");
+    }
+
+    function refreshSeProgressBars() {
+      const shiftPercent = Math.round((seShiftCount / seShiftTotal) * 100);
+      document.getElementById('se-shift-text').innerText = `${seShiftCount} / ${seShiftTotal} Approved (${shiftPercent}%)`;
+      document.getElementById('se-shift-bar').style.width = `${shiftPercent}%`;
+      document.getElementById('se-shift-bar').innerText = `${shiftPercent}%`;
+
+      document.getElementById('se-overall-text').innerText = `${seOverallProgress}% Completed`;
+      document.getElementById('se-overall-bar').style.width = `${seOverallProgress}%`;
+      document.getElementById('se-overall-bar').innerText = `${seOverallProgress}%`;
+
+      const remaining = document.getElementById('se-requests-container').children.length;
+      document.getElementById('se-counter-badge').innerText = `${remaining} REPORTS WAITING`;
+      updateBulkApproveCount();
+    }
+
+    // Drawing & Modal Handlers
+    function openVerificationModal(photoDesc, drawingRef) {
+      document.getElementById('modal-photo-title').innerText = `Photo from Worker: ${photoDesc}`;
+      document.getElementById('modal-drawing-title').innerText = `Official Blueprint: ${drawingRef}`;
+      document.getElementById('drawing-modal-overlay').classList.remove('hidden');
+    }
+
+    function closeVerificationModal() {
+      document.getElementById('drawing-modal-overlay').classList.add('hidden');
+    }
+
+    function openHseModal() {
+      document.getElementById('hse-modal-overlay').classList.remove('hidden');
+    }
+
+    function closeHseModal() {
+      document.getElementById('hse-modal-overlay').classList.add('hidden');
+    }
+
+    // Site Operative Voice Playback Simulation
+    function simulateOperativeVoice() {
+      document.getElementById('op-text-input').value = "Bay B line 24 joint J-103 fitup completed, pre-heat treatment checked.";
+      document.getElementById('audio-playback-chip').classList.remove('hidden');
+      showToast("Voice Message Recorded Cleanly");
+    }
+
+    function playSimulatedAudio() {
+      showToast("Playing Audio: 'Bay B line 24 joint J-103 fitup...'");
+    }
+
+    function reRecordVoice() {
+      document.getElementById('op-text-input').value = "";
+      document.getElementById('audio-playback-chip').classList.add('hidden');
+      showToast("Audio Cleared. Press speak to record again.");
+    }
+
+    function operativePhotoSelected(input) {
+      if (input.files && input.files[0]) {
+        document.getElementById('op-file-name').innerText = `PHOTO SELECTED: ${input.files[0].name.toUpperCase()}`;
+      }
+    }
+
+    function submitOperativeLog() {
+      const val = document.getElementById('op-text-input').value.trim();
+      const fileText = document.getElementById('op-file-name').innerText;
+      if (!val && !fileText) {
+        showToast("Please enter work details or record voice");
+        return;
+      }
+      document.getElementById('op-input-card').classList.add('hidden');
+      document.getElementById('op-done-card').classList.remove('hidden');
+    }
+
+    function resetOperativeForm() {
+      document.getElementById('op-text-input').value = '';
+      document.getElementById('op-file-name').innerText = '';
+      document.getElementById('audio-playback-chip').classList.add('hidden');
+      document.getElementById('op-done-card').classList.add('hidden');
+      document.getElementById('op-input-card').classList.remove('hidden');
+    }
+
+    // Quick Finder Implementation (Ctrl+K)
+    window.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        openCommandPalette();
+      }
+      if (e.key === 'Escape') {
+        closeCommandPalette();
+        closeVerificationModal();
+        closeHseModal();
+      }
+    });
+
+    function openCommandPalette() {
+      document.getElementById('command-palette-overlay').classList.remove('hidden');
+      document.getElementById('command-palette-input').focus();
+    }
+
+    function closeCommandPalette() {
+      document.getElementById('command-palette-overlay').classList.add('hidden');
+    }
+
+    function filterCommandResults(query) {
+      const list = document.getElementById('command-results-list');
+      const items = list.querySelectorAll('div');
+      items.forEach(item => {
+        if (item.innerText.toLowerCase().includes(query.toLowerCase())) {
+          item.classList.remove('hidden');
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+    }
+
+    function executeCommand(target) {
+      closeCommandPalette();
+      showToast(`Selected: ${target}`);
+    }
+
+    // Reversible Toast Engine (With Undo Support)
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      container.innerHTML = `<span class="bg-[#181b22] border border-[#363d4a] text-slate-200 px-3 py-1 rounded-[2px] text-xs font-mono shadow font-semibold">${message}</span>`;
+      setTimeout(() => { container.innerHTML = ''; }, 2600);
+    }
+
+    function showToastWithUndo(message) {
+      const container = document.getElementById('toast-container');
+      container.innerHTML = `
+        <div class="bg-[#181b22] border border-[#363d4a] text-slate-200 px-3 py-1 rounded-[2px] text-xs font-mono shadow font-semibold flex items-center space-x-2">
+          <span>${message}</span>
+          <button onclick="triggerUndoAction()" class="text-amber-400 hover:text-amber-300 font-bold ml-1.5 underline">Undo (10s)</button>
+        </div>
+      `;
+      setTimeout(() => { container.innerHTML = ''; }, 6000);
+    }
+
+    function triggerUndoAction() {
+      showToast("Undone: Last action cancelled");
+    }
+
+    // Returning session: validate the stored token against the backend,
+    // then land on that role's default screen (never on the login form).
+    (function restoreSession() {
+      const session = readSession();
+      if (!session || !session.token || !session.user) return;
+      fetch(API_BASE + '/api/auth/me', { headers: { 'Authorization': 'Bearer ' + session.token } })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('expired')); })
+        .then(function (user) { startSession(user, session.token); })
+        .catch(function () { clearSession(); });
+    })();
+  </script>
+</body>
+</html>

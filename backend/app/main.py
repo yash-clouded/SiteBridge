@@ -24,7 +24,9 @@ app = FastAPI(title="SiteBridge", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    # `frontend_origin` holds one origin or a comma-separated list, so the
+    # Vercel domain and localhost can both talk to this API from a browser.
+    allow_origins=[o.strip() for o in settings.frontend_origin.split(",") if o.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

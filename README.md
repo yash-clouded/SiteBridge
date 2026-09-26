@@ -73,10 +73,13 @@ SiteBridge/
 # 1. database (Postgres 16 + pgvector)
 docker compose up -d
 
-# 2. backend config — copy the template, then edit
+# 2. backend config — copy the template ONLY if .env does not exist yet
 cd backend
-cp example.env .env
+[ -f .env ] || cp example.env .env   # never overwrite an existing .env
 #    put your keys in .env: LLM_API_KEY, EMBEDDING_* (if used), SARVAM_API_KEY
+#    ⚠ `cp example.env .env` on a file that already has your keys silently
+#    resets them: extraction drops to the "Pattern (no LLM)" rung and
+#    translation reports "SARVAM_API_KEY is not set".
 
 # 3. install + create schema + seed the demo project (NPU) and demo users
 uv sync
@@ -264,7 +267,8 @@ removed after each test.
 ```bash
 # one-time
 docker compose up -d
-cd backend && cp example.env .env && uv sync && uv run python seed.py && cd ..
+cd backend && [ -f .env ] || cp example.env .env   # keep existing .env if present
+cd backend && uv sync && uv run python seed.py && cd ..
 cd frontend && npm install && cd ..
 
 # terminal 1 — API on :8000

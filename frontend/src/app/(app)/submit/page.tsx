@@ -21,27 +21,27 @@ type TextSource = "text" | "voice" | "dpr";
 function extractionLabel(r: ReportListItem): { text: string; className: string } {
   if (r.extracted_by) {
     if (r.extracted_by.startsWith("heuristic")) {
-      return { text: "Pattern (no LLM)", className: "text-amber" };
+      return { text: "Pattern (no LLM)", className: "text-status-pending" };
     }
-    return { text: r.extracted_by, className: "text-ink-2" };
+    return { text: r.extracted_by, className: "text-muted" };
   }
-  if (r.extraction_status === "failed") return { text: "Failed", className: "text-red" };
-  if (r.extraction_status === "disabled") return { text: "Not extracted", className: "text-ink-3" };
-  return { text: "Pending", className: "text-ink-3" };
+  if (r.extraction_status === "failed") return { text: "Failed", className: "text-status-rejected" };
+  if (r.extraction_status === "disabled") return { text: "Not extracted", className: "text-muted" };
+  return { text: "Pending", className: "text-muted" };
 }
 
 const OUTCOME_LABELS: Record<string, string> = {
-  PENDING: "Awaiting review",
+  PENDING: "Awaiting decision",
   NEEDS_MANUAL: "Needs manual mapping",
   APPROVED: "Approved",
   REJECTED: "Rejected",
 };
 
 const OUTCOME_STYLE: Record<string, string> = {
-  PENDING: "text-ink-2",
-  NEEDS_MANUAL: "text-amber",
-  APPROVED: "text-green",
-  REJECTED: "text-red",
+  PENDING: "text-status-pending",
+  NEEDS_MANUAL: "text-status-corrected",
+  APPROVED: "text-status-approved",
+  REJECTED: "text-status-rejected",
 };
 
 /** Sarvam translate languages (23) — "auto" runs /text-lid detection first. */
@@ -92,23 +92,23 @@ function translationChip(r: ReportListItem): {
     case "skipped":
       return {
         text: `${langShort(r.language_code)} · English`,
-        className: "text-ink-3",
+        className: "text-muted",
         title: "Already English — nothing to translate",
       };
     case "failed":
       return {
         text: "Translation failed",
-        className: "text-amber",
+        className: "text-status-pending",
         title: r.translation_error ?? "Extracted from the text as submitted",
       };
     case "disabled":
       return {
         text: "—",
-        className: "text-ink-3",
+        className: "text-muted",
         title: "Translation is not configured (SARVAM_API_KEY unset)",
       };
     default:
-      return { text: "—", className: "text-ink-3" };
+      return { text: "—", className: "text-muted" };
   }
 }
 
@@ -247,7 +247,7 @@ export default function SubmitPage() {
   if (user && user.role !== "FIELD") {
     return (
       <Shell title="Submit update">
-        <p className="text-[13px] text-ink-2">
+        <p className="text-[13px] text-muted">
           Submissions are made from the field — this screen is for Field Users.
         </p>
       </Shell>
@@ -258,15 +258,15 @@ export default function SubmitPage() {
     <Shell title="Submit update" subtitle={project ? `${project.code} — ${project.name}` : undefined}>
       <div className="mx-auto max-w-5xl space-y-5">
         {/* New submission */}
-        <section className="rounded-md border border-line bg-panel">
+        <section className="rounded-md border border-line bg-surface">
           <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
             <span className="text-[13px] font-medium">New field report</span>
-            <label className="flex items-center gap-2 text-[12px] text-ink-2">
+            <label className="flex items-center gap-2 text-[12px] text-muted">
               Project
               <select
                 value={projectId ?? ""}
                 onChange={(e) => setProjectId(Number(e.target.value))}
-                className="rounded border border-line-2 bg-panel px-2 py-1 text-[13px] text-ink"
+                className="rounded border border-line bg-surface px-2 py-1 text-[13px] text-ink"
               >
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -286,7 +286,7 @@ export default function SubmitPage() {
                   className={`border-b-2 px-1 pb-2 transition-colors ${
                     mode === m
                       ? "border-accent font-medium text-accent"
-                      : "border-transparent text-ink-2 hover:text-ink"
+                      : "border-transparent text-muted hover:text-ink"
                   }`}
                 >
                   {m === "text" ? "Type / transcript" : "Upload file"}
@@ -297,13 +297,13 @@ export default function SubmitPage() {
 
           {mode === "text" ? (
             <form onSubmit={submitText} className="px-4 py-3">
-              <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-ink-2">
+              <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-muted">
                 <label className="flex items-center gap-2">
                   Source
                   <select
                     value={source}
                     onChange={(e) => setSource(e.target.value as TextSource)}
-                    className="rounded border border-line-2 bg-panel px-2 py-1 text-[13px] text-ink"
+                    className="rounded border border-line bg-surface px-2 py-1 text-[13px] text-ink"
                   >
                     <option value="text">Typed note</option>
                     <option value="voice">Voice transcript (transcribed upstream)</option>
@@ -315,7 +315,7 @@ export default function SubmitPage() {
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="rounded border border-line-2 bg-panel px-2 py-1 text-[13px] text-ink"
+                    className="rounded border border-line bg-surface px-2 py-1 text-[13px] text-ink"
                   >
                     {LANGUAGES.map((l) => (
                       <option key={l.value} value={l.value}>
@@ -324,7 +324,7 @@ export default function SubmitPage() {
                     ))}
                   </select>
                 </label>
-                <span className="text-ink-3">
+                <span className="text-muted">
                   Non-English text is translated to English before extraction.
                 </span>
               </div>
@@ -334,17 +334,17 @@ export default function SubmitPage() {
                 required
                 rows={5}
                 placeholder="e.g. Installed 24-inch spool pieces in rack bays 1 to 3, Area B. Hydrotest scheduled next week."
-                className="block w-full resize-y rounded border border-line-2 bg-panel px-2.5 py-2 text-[13px] leading-5 placeholder:text-ink-3"
+                className="block w-full resize-y rounded border border-line bg-surface px-2.5 py-2 text-[13px] leading-5 placeholder:text-muted"
               />
               <div className="mt-3 flex items-center gap-3">
                 <button
                   type="submit"
                   disabled={submitting || !text.trim()}
-                  className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-accent-strong disabled:opacity-50"
+                  className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-accent-hover disabled:bg-line disabled:text-muted"
                 >
                   {submitting ? "Submitting…" : "Submit report"}
                 </button>
-                {error ? <span className="text-[12px] text-red">{error}</span> : null}
+                {error ? <span className="text-[12px] text-status-rejected">{error}</span> : null}
               </div>
             </form>
           ) : (
@@ -353,39 +353,39 @@ export default function SubmitPage() {
                 type="file"
                 accept=".txt,.csv,.log,.xlsx,.xls,.pdf"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="block w-full rounded border border-line-2 bg-panel px-2 py-1.5 text-[13px] file:mr-3 file:rounded file:border-0 file:bg-surface file:px-2 file:py-1 file:text-[12px] file:text-ink-2"
+                className="block w-full rounded border border-line bg-surface px-2 py-1.5 text-[13px] file:mr-3 file:rounded file:border-0 file:bg-page file:px-2 file:py-1 file:text-[12px] file:text-muted"
               />
-              <p className="mt-1.5 text-[12px] text-ink-3">
+              <p className="mt-1.5 text-[12px] text-muted">
                 PDF, Excel or text. Evidence pointer (page / sheet rows) is stored with the raw input.
               </p>
               <div className="mt-3 flex items-center gap-3">
                 <button
                   type="submit"
                   disabled={submitting || !file}
-                  className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-accent-strong disabled:opacity-50"
+                  className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-accent-hover disabled:bg-line disabled:text-muted"
                 >
                   {submitting ? "Uploading…" : "Upload report"}
                 </button>
-                {error ? <span className="text-[12px] text-red">{error}</span> : null}
+                {error ? <span className="text-[12px] text-status-rejected">{error}</span> : null}
               </div>
             </form>
           )}
         </section>
 
         {/* My submissions — evidence-backed history (status column joins Phase 4) */}
-        <section className="overflow-hidden rounded-md border border-line bg-panel">
+        <section className="overflow-hidden rounded-md border border-line bg-surface">
           <div className="border-b border-line px-4 py-2.5 text-[13px] font-medium">
             My submissions
           </div>
           {!reports ? (
-            <p className="px-4 py-3 text-[13px] text-ink-3">Loading…</p>
+            <p className="px-4 py-3 text-[13px] text-muted">Loading…</p>
           ) : reports.length === 0 ? (
-            <p className="px-4 py-3 text-[13px] text-ink-3">No submissions yet.</p>
+            <p className="px-4 py-3 text-[13px] text-muted">No submissions yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1240px] text-[13px]">
                 <thead>
-                  <tr className="border-b border-line bg-panel-2 text-left text-[12px] text-ink-2">
+                  <tr className="border-b border-line bg-page text-left text-[12px] text-muted">
                     <th className="px-4 py-2 font-medium">Time</th>
                     <th className="px-3 py-2 font-medium">Source</th>
                     <th className="px-3 py-2 font-medium">Evidence</th>
@@ -403,18 +403,18 @@ export default function SubmitPage() {
                         r.id === newestId ? "row-in" : ""
                       }`}
                     >
-                      <td className="whitespace-nowrap px-4 py-2 tabular-nums text-ink-2">
+                      <td className="whitespace-nowrap px-4 py-2 tabular-nums text-muted">
                         {new Date(r.created_at).toLocaleString()}
                       </td>
-                      <td className="px-3 py-2 text-ink-2">
+                      <td className="px-3 py-2 text-muted">
                         {SOURCE_LABELS[r.source_type] ?? r.source_type}
                       </td>
-                      <td className="px-3 py-2 text-ink-2">
+                      <td className="px-3 py-2 text-muted">
                         {r.filename ? <span className="text-ink">{r.filename}</span> : null}
-                        {r.filename ? <span className="text-ink-3"> · </span> : null}
+                        {r.filename ? <span className="text-muted"> · </span> : null}
                         {formatPointer(r)}
                       </td>
-                      <td className="max-w-[380px] truncate px-3 py-2 text-ink-2">
+                      <td className="max-w-[380px] truncate px-3 py-2 text-muted">
                         {preview(r.raw_text)}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2">
@@ -432,12 +432,12 @@ export default function SubmitPage() {
                       </td>
                       <td className="px-4 py-2">
                         {!r.review_status ? (
-                          <span className="text-ink-3">—</span>
+                          <span className="text-muted">—</span>
                         ) : (
-                          <span className={OUTCOME_STYLE[r.review_status] ?? "text-ink-2"}>
+                          <span className={OUTCOME_STYLE[r.review_status] ?? "text-muted"}>
                             {OUTCOME_LABELS[r.review_status] ?? r.review_status}
                             {r.mapped_activity ? (
-                              <span className="block max-w-[260px] truncate text-[12px] text-ink-3">
+                              <span className="block max-w-[260px] truncate text-[12px] text-muted">
                                 {r.mapped_activity}
                               </span>
                             ) : null}
